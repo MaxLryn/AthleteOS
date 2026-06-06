@@ -29,7 +29,7 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
 
   // compute streak
   let streak = 0
-  const sortedDates = [...new Set(sessions.map(s => s.date))].sort((a, b) => b.localeCompare(a))
+  const sortedDates = Array.from(new Set(sessions.map(s => s.date))).sort((a, b) => b.localeCompare(a))
   for (let i = 0; i < sortedDates.length; i++) {
     const expected = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10)
     if (sortedDates[i] === expected) streak++
