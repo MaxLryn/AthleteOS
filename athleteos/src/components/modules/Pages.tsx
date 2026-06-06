@@ -430,7 +430,7 @@ export function GamificationPage({ sessions, goals }: PageProps) {
   const doneGoals = goals.filter(g => g.current >= g.target).length
 
   const today = new Date().toISOString().slice(0,10)
-  const dates = [...new Set(sessions.map(s => s.date))].sort((a,b) => b.localeCompare(a))
+  const dates = Array.from(new Set(sessions.map(s => s.date))).sort((a,b) => b.localeCompare(a))
   let streak = 0
   for (let i = 0; i < dates.length; i++) {
     const exp = new Date(Date.now() - i * 86400000).toISOString().slice(0,10)
