@@ -236,9 +236,9 @@ export default function StravaPage({ profile, sports, sessions, setSessions, sho
         {stravaActivities.length > 0 && (
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <CardTitle style={{ marginBottom: 0 }}>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--txt1)' }}>
                 {stravaActivities.length} activités disponibles
-              </CardTitle>
+              </div>
               <Btn onClick={importAll} disabled={loading} style={{ background: '#FC4C02', border: 'none' }}>
                 ⬇️ Tout importer
               </Btn>
