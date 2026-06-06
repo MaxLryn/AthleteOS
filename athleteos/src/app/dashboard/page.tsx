@@ -24,7 +24,6 @@ const NAV = [
   { id: 'gamification', icon: '🏆', label: 'Gamification' },
   { id: 'journal',      icon: '📔', label: 'Journal' },
   { id: 'strava',       icon: '🟠', label: 'Strava' },
-  { id: 'profile',      icon: '👤', label: 'Mon profil' },
 ]
 
 export default function DashboardLayout() {
@@ -51,13 +50,9 @@ export default function DashboardLayout() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
 
-      // Check for Strava OAuth callback
       const params = new URLSearchParams(window.location.search)
       const stravaCode = params.get('strava_code')
-      if (stravaCode) {
-        setPage('strava')
-        window.history.replaceState({}, '', '/dashboard')
-      }
+      if (stravaCode) { setPage('strava'); window.history.replaceState({}, '', '/dashboard') }
 
       const [profileRes, sportsRes, sessionsRes, eventsRes, goalsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
@@ -127,7 +122,7 @@ export default function DashboardLayout() {
     onProfileUpdate: (p: Profile) => setProfile(p),
   }
 
-  const initials  = profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AT'
+  const initials    = profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AT'
   const displayName = profile?.full_name || profile?.username || 'Athlète'
 
   if (loading) return (
@@ -215,13 +210,15 @@ export default function DashboardLayout() {
           ))}
         </div>
 
-        {/* Footer */}
+        {/* Footer — clic sur le nom ouvre le profil */}
         <div style={{ padding: '10px 10px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <div onClick={() => setDarkMode(d => !d)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 9, cursor: 'pointer', color: 'var(--txt2)', fontSize: 12, marginBottom: 6 }}>
             <span style={{ fontSize: 17, width: 20, textAlign: 'center', flexShrink: 0 }}>{darkMode ? '☀️' : '🌙'}</span>
             {!collapsed && <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>}
           </div>
-          <div onClick={() => setPage('profile')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px', borderRadius: 10, background: 'var(--bg3)', cursor: 'pointer' }}>
+
+          {/* User card — cliquable pour ouvrir le profil */}
+          <div onClick={() => setPage('profile')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px', borderRadius: 10, background: page === 'profile' ? 'var(--bg4)' : 'var(--bg3)', cursor: 'pointer', border: `1px solid ${page === 'profile' ? 'var(--a1)' : 'transparent'}`, transition: 'all .15s' }}>
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
             ) : (
@@ -230,11 +227,11 @@ export default function DashboardLayout() {
             {!collapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--txt1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
-                <div style={{ fontSize: 11, color: 'var(--a4)' }}>✦ {profile?.plan || 'free'}</div>
+                <div style={{ fontSize: 11, color: 'var(--txt3)' }}>⚙️ Réglages du profil</div>
               </div>
             )}
             {!collapsed && (
-              <div onClick={e => { e.stopPropagation(); signOut() }} title="Déconnexion" style={{ cursor: 'pointer', color: 'var(--txt3)', fontSize: 14, padding: 4 }}>⎋</div>
+              <div onClick={e => { e.stopPropagation(); signOut() }} title="Déconnexion" style={{ cursor: 'pointer', color: 'var(--txt3)', fontSize: 14, padding: 4, borderRadius: 6, transition: 'color .15s' }}>⎋</div>
             )}
           </div>
         </div>
