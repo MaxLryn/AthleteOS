@@ -10,12 +10,15 @@ import { GoalsPage, AnalyticsPage, HealthPage, CoachPage, TimelinePage, Gamifica
 import ProfilePage      from '@/components/modules/ProfilePage'
 import StravaPage       from '@/components/modules/StravaPage'
 import ExercisePage     from '@/components/modules/ExercisePage'
+import ChartsPage       from '@/components/modules/ChartsPage'
+import CalendarSyncPage from '@/components/modules/CalendarSyncPage'
 
 const NAV = [
   { id: 'dashboard',    icon: '⚡', label: 'Dashboard' },
   { id: 'sessions',     icon: '📝', label: 'Séances' },
   { id: 'calendar',     icon: '📅', label: 'Calendrier' },
   { id: 'goals',        icon: '🎯', label: 'Objectifs' },
+  { id: 'charts',       icon: '📈', label: 'Graphiques' },
   { id: 'analytics',    icon: '📊', label: 'Analytics' },
   { id: 'exercises',    icon: '🏋️', label: 'Exercices' },
   { id: 'health',       icon: '❤️', label: 'Santé & Recovery' },
@@ -23,7 +26,11 @@ const NAV = [
   { id: 'timeline',     icon: '🗓️', label: 'Timeline' },
   { id: 'gamification', icon: '🏆', label: 'Gamification' },
   { id: 'journal',      icon: '📔', label: 'Journal' },
+]
+
+const NAV_INTEGRATIONS = [
   { id: 'strava',       icon: '🟠', label: 'Strava' },
+  { id: 'calsync',      icon: '🔄', label: 'Sync Calendrier' },
 ]
 
 export default function DashboardLayout() {
@@ -53,6 +60,8 @@ export default function DashboardLayout() {
       const params = new URLSearchParams(window.location.search)
       const stravaCode = params.get('strava_code')
       if (stravaCode) { setPage('strava'); window.history.replaceState({}, '', '/dashboard') }
+      const pageParam = params.get('page')
+      if (pageParam) { setPage(pageParam); window.history.replaceState({}, '', '/dashboard') }
 
       const [profileRes, sportsRes, sessionsRes, eventsRes, goalsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
@@ -120,6 +129,7 @@ export default function DashboardLayout() {
     addSport, addSession, addEvent, addGoal, updateGoal,
     setSports, setSessions, setEvents, setGoals,
     onProfileUpdate: (p: Profile) => setProfile(p),
+    onNav: setPage,
   }
 
   const initials    = profile?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AT'
@@ -135,10 +145,11 @@ export default function DashboardLayout() {
   )
 
   const pages: Record<string, React.ReactNode> = {
-    dashboard:    <DashboardHome    {...ctx} onNav={setPage} />,
+    dashboard:    <DashboardHome    {...ctx} />,
     sessions:     <SessionsPage     {...ctx} />,
     calendar:     <CalendarPage     {...ctx} />,
     goals:        <GoalsPage        {...ctx} />,
+    charts:       <ChartsPage       {...ctx} />,
     analytics:    <AnalyticsPage    {...ctx} />,
     exercises:    <ExercisePage     {...ctx} />,
     health:       <HealthPage       {...ctx} />,
@@ -147,77 +158,59 @@ export default function DashboardLayout() {
     gamification: <GamificationPage {...ctx} />,
     journal:      <JournalPage      {...ctx} />,
     strava:       <StravaPage       {...ctx} />,
+    calsync:      <CalendarSyncPage {...ctx} />,
     profile:      <ProfilePage      {...ctx} />,
   }
 
+  const NavItem = ({ n }: { n: typeof NAV[0] }) => (
+    <div onClick={() => setPage(n.id)} style={{
+      display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px',
+      borderRadius: 9, cursor: 'pointer', marginBottom: 2, whiteSpace: 'nowrap',
+      background: page === n.id ? 'var(--bg4)' : 'transparent',
+      color: page === n.id ? 'var(--a1)' : 'var(--txt2)',
+      transition: 'all .15s',
+    }}>
+      <span style={{ fontSize: 17, width: 20, textAlign: 'center', flexShrink: 0 }}>{n.icon}</span>
+      {!collapsed && <span style={{ fontSize: 13, fontWeight: page === n.id ? 500 : 400 }}>{n.label}</span>}
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg1)' }}>
-
-      {/* ── SIDEBAR ── */}
       <aside style={{
         width: collapsed ? 64 : 230, flexShrink: 0,
         background: 'var(--bg2)', borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column', transition: 'width .25s ease',
         overflow: 'hidden', zIndex: 10,
       }}>
-        {/* Logo */}
         <div onClick={() => setCollapsed(c => !c)} style={{ padding: '20px 16px 22px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flexShrink: 0 }}>
           <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,var(--a1),var(--a2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>⚡</div>
           {!collapsed && <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--txt1)', whiteSpace: 'nowrap', letterSpacing: '-0.5px' }}>Athlete<span style={{ color: 'var(--a1)' }}>OS</span></span>}
         </div>
 
-        {/* Nav */}
         <div style={{ flex: 1, padding: '0 8px', overflowY: 'auto' }}>
           {!collapsed && <div style={{ fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--txt3)', fontWeight: 600, padding: '0 10px', marginBottom: 6 }}>Principal</div>}
-          {NAV.slice(0, 11).map(n => (
-            <div key={n.id} onClick={() => setPage(n.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px',
-              borderRadius: 9, cursor: 'pointer', marginBottom: 2, whiteSpace: 'nowrap',
-              background: page === n.id ? 'var(--bg4)' : 'transparent',
-              color: page === n.id ? 'var(--a1)' : 'var(--txt2)',
-              transition: 'all .15s',
-            }}>
-              <span style={{ fontSize: 17, width: 20, textAlign: 'center', flexShrink: 0 }}>{n.icon}</span>
-              {!collapsed && <span style={{ fontSize: 13, fontWeight: page === n.id ? 500 : 400 }}>{n.label}</span>}
-            </div>
-          ))}
+          {NAV.map(n => <NavItem key={n.id} n={n} />)}
 
           <div style={{ borderTop: '1px solid var(--border)', margin: '10px 0' }} />
           {!collapsed && <div style={{ fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--txt3)', fontWeight: 600, padding: '0 10px', marginBottom: 6 }}>Intégrations</div>}
-          {NAV.slice(11).map(n => (
-            <div key={n.id} onClick={() => setPage(n.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 11, padding: '9px 10px',
-              borderRadius: 9, cursor: 'pointer', marginBottom: 2, whiteSpace: 'nowrap',
-              background: page === n.id ? 'var(--bg4)' : 'transparent',
-              color: page === n.id ? 'var(--a1)' : 'var(--txt2)',
-              transition: 'all .15s',
-            }}>
-              <span style={{ fontSize: 17, width: 20, textAlign: 'center', flexShrink: 0 }}>{n.icon}</span>
-              {!collapsed && <span style={{ fontSize: 13, fontWeight: page === n.id ? 500 : 400 }}>{n.label}</span>}
-            </div>
-          ))}
+          {NAV_INTEGRATIONS.map(n => <NavItem key={n.id} n={n} />)}
 
           <div style={{ borderTop: '1px solid var(--border)', margin: '10px 0' }} />
           {!collapsed && <div style={{ fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--txt3)', fontWeight: 600, padding: '0 10px', marginBottom: 6 }}>Sports</div>}
           {sports.map(s => (
-            <div key={s.id} onClick={() => setPage('sessions')} style={{
-              display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px',
-              borderRadius: 9, cursor: 'pointer', color: 'var(--txt2)', whiteSpace: 'nowrap',
-            }}>
+            <div key={s.id} onClick={() => setPage('sessions')} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 10px', borderRadius: 9, cursor: 'pointer', color: 'var(--txt2)', whiteSpace: 'nowrap' }}>
               <span style={{ fontSize: 16, width: 20, textAlign: 'center', flexShrink: 0 }}>{s.icon}</span>
               {!collapsed && <span style={{ fontSize: 12 }}>{s.label}</span>}
             </div>
           ))}
         </div>
 
-        {/* Footer — clic sur le nom ouvre le profil */}
         <div style={{ padding: '10px 10px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <div onClick={() => setDarkMode(d => !d)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 9, cursor: 'pointer', color: 'var(--txt2)', fontSize: 12, marginBottom: 6 }}>
             <span style={{ fontSize: 17, width: 20, textAlign: 'center', flexShrink: 0 }}>{darkMode ? '☀️' : '🌙'}</span>
             {!collapsed && <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>}
           </div>
-
-          {/* User card — cliquable pour ouvrir le profil */}
           <div onClick={() => setPage('profile')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px', borderRadius: 10, background: page === 'profile' ? 'var(--bg4)' : 'var(--bg3)', cursor: 'pointer', border: `1px solid ${page === 'profile' ? 'var(--a1)' : 'transparent'}`, transition: 'all .15s' }}>
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -230,29 +223,17 @@ export default function DashboardLayout() {
                 <div style={{ fontSize: 11, color: 'var(--txt3)' }}>⚙️ Réglages du profil</div>
               </div>
             )}
-            {!collapsed && (
-              <div onClick={e => { e.stopPropagation(); signOut() }} title="Déconnexion" style={{ cursor: 'pointer', color: 'var(--txt3)', fontSize: 14, padding: 4, borderRadius: 6, transition: 'color .15s' }}>⎋</div>
-            )}
+            {!collapsed && <div onClick={e => { e.stopPropagation(); signOut() }} title="Déconnexion" style={{ cursor: 'pointer', color: 'var(--txt3)', fontSize: 14, padding: 4 }}>⎋</div>}
           </div>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
       <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', background: 'var(--bg1)' }}>
-        <div className="fade-up" key={page}>
-          {pages[page] || pages['dashboard']}
-        </div>
+        <div className="fade-up" key={page}>{pages[page] || pages['dashboard']}</div>
       </main>
 
-      {/* ── TOAST ── */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 2000,
-          background: toast.type === 'success' ? 'var(--a3)' : 'var(--a5)',
-          color: '#fff', padding: '12px 20px', borderRadius: 12,
-          fontSize: 13, fontWeight: 500, boxShadow: '0 8px 24px rgba(0,0,0,.35)',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: toast.type === 'success' ? 'var(--a3)' : 'var(--a5)', color: '#fff', padding: '12px 20px', borderRadius: 12, fontSize: 13, fontWeight: 500, boxShadow: '0 8px 24px rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', gap: 8 }}>
           {toast.type === 'success' ? '✓' : '!'} {toast.msg}
         </div>
       )}
