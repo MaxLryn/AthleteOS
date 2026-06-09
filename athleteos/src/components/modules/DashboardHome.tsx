@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Card, CardTitle, Pill, Topbar, Heatmap, MiniBarChart, RadialScore, ProgressBar } from '@/components/ui'
 import SessionModal from './SessionModal'
+import DailyRecommendation from './DailyRecommendation'
 import type { Sport, Session, CalendarEvent, Goal, Profile } from '@/types'
 import { EVENT_TYPE_CONFIG } from '@/types'
 
@@ -27,7 +28,6 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
   const thisWeek      = sessions.filter(s => s.date >= weekAgo).length
   const doneGoals     = goals.filter(g => g.current >= g.target).length
 
-  // compute streak
   let streak = 0
   const sortedDates = Array.from(new Set(sessions.map(s => s.date))).sort((a, b) => b.localeCompare(a))
   for (let i = 0; i < sortedDates.length; i++) {
@@ -36,7 +36,6 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
     else break
   }
 
-  // athlete score (simple heuristic)
   const regularityScore = Math.min(100, thisWeek * 20)
   const goalScore       = goals.length ? Math.round((doneGoals / goals.length) * 100) : 50
   const athleteScore    = Math.round((regularityScore * 0.4) + (goalScore * 0.4) + 20)
@@ -54,9 +53,18 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
 
   return (
     <div>
-      <Topbar title="Dashboard" subtitle={new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} action={{ label: 'Nouvelle séance', fn: () => setSessionModal(true) }} />
+      <Topbar
+        title="Dashboard"
+        subtitle={new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        action={{ label: 'Nouvelle séance', fn: () => setSessionModal(true) }}
+      />
 
       <div style={{ padding: '0 28px 28px' }}>
+
+        {/* Recommandation du jour */}
+        <div style={{ marginBottom: 16 }}>
+          <DailyRecommendation sessions={sessions} sports={sports} goals={goals} onNav={onNav} />
+        </div>
 
         {/* Score + KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, marginBottom: 16 }}>
@@ -68,7 +76,7 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 28, color: 'var(--txt1)', letterSpacing: '-1px', lineHeight: 1 }}>{athleteScore}</div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'var(--a3)', background: 'rgba(34,211,160,.12)', padding: '3px 8px', borderRadius: 20, margin: '6px 0 10px' }}>▲ En progression</div>
-                {[['Régularité', regularityScore, 'var(--a1)'], ['Objectifs', goalScore, 'var(--a3)']].map(([l, v, c]) => (
+                {[['Régularité', regularityScore, 'var(--a1)'], ['Objectifs', goalScore, 'var(--a3)']] .map(([l, v, c]) => (
                   <div key={l as string} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, fontSize: 11 }}>
                     <span style={{ width: 62, color: 'var(--txt2)', textAlign: 'right' }}>{l}</span>
                     <div style={{ flex: 1 }}><ProgressBar value={v as number} color={c as string} /></div>
@@ -81,8 +89,8 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
             {[
-              { icon: '🔥', val: totalSessions, label: 'Séances totales', delta: `${thisWeek} cette semaine`, col: 'var(--a1)' },
-              { icon: '⏱️', val: `${totalHours}h`, label: "Heures d'entraîn.", delta: 'Depuis le début', col: 'var(--a3)' },
+              { icon: '🔥', val: totalSessions, label: 'Séances totales',    delta: `${thisWeek} cette semaine`, col: 'var(--a1)' },
+              { icon: '⏱️', val: `${totalHours}h`, label: "Heures d'entraîn.", delta: 'Depuis le début',      col: 'var(--a3)' },
               { icon: '🏆', val: `${doneGoals}/${goals.length}`, label: 'Objectifs atteints', delta: `${goals.length ? Math.round((doneGoals/goals.length)*100) : 0}%`, col: 'var(--a2)' },
               { icon: '⚡', val: `🔥 ${streak}`, label: 'Streak actuel', delta: `${streak} jours consécutifs`, col: 'var(--a4)' },
             ].map(({ icon, val, label, delta, col }) => (
@@ -142,8 +150,8 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
             {[
               { icon: '📊', col: 'var(--a1)', title: 'Analyse de tes séances', body: `Tu as effectué ${totalSessions} séances au total. Continue sur cette lancée !` },
-              { icon: '🎯', col: 'var(--a3)', title: 'Objectifs', body: `${doneGoals} objectif${doneGoals > 1 ? 's' : ''} atteint${doneGoals > 1 ? 's' : ''} sur ${goals.length}. Excellent travail !` },
-              { icon: '🔥', col: 'var(--a4)', title: 'Streak', body: streak > 0 ? `${streak} jour${streak > 1 ? 's' : ''} consécutif${streak > 1 ? 's' : ''} d'entraînement. Maintiens le cap !` : 'Commence une nouvelle série de séances dès aujourd\'hui !' },
+              { icon: '🎯', col: 'var(--a3)', title: 'Objectifs', body: `${doneGoals} objectif${doneGoals > 1 ? 's' : ''} atteint${doneGoals > 1 ? 's' : ''} sur ${goals.length}.` },
+              { icon: '🔥', col: 'var(--a4)', title: 'Streak', body: streak > 0 ? `${streak} jour${streak > 1 ? 's' : ''} consécutif${streak > 1 ? 's' : ''}. Maintiens le cap !` : "Commence une nouvelle série dès aujourd'hui !" },
             ].map(({ icon, col, title, body }) => (
               <div key={title} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'flex', gap: 10 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 7, background: col + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{icon}</div>
@@ -156,7 +164,7 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
           </div>
         </Card>
 
-        {/* Recent sessions + upcoming events */}
+        {/* Recent sessions + upcoming */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Card>
             <CardTitle>Séances récentes</CardTitle>
@@ -175,7 +183,7 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
                     <div style={{ fontSize: 11, color: 'var(--txt2)' }}>{s.date} · {s.duration} min{s.note ? ` · ${s.note}` : ''}</div>
                   </div>
                   {s.note?.includes('PR') && <Pill color="var(--a3)">🏅 PR</Pill>}
-                  {s.result === 'win' && <Pill color="var(--a3)">✓ V</Pill>}
+                  {s.result === 'win'  && <Pill color="var(--a3)">✓ V</Pill>}
                   {s.result === 'loss' && <Pill color="var(--a5)">✗ D</Pill>}
                 </div>
               )
@@ -189,9 +197,11 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
                 <div style={{ color: 'var(--txt3)', fontSize: 13, textAlign: 'center', padding: '12px 0' }}>Aucun événement planifié</div>
               ) : upcoming.map(ev => {
                 const cfg = EVENT_TYPE_CONFIG[ev.type]
+                const sport = sports.find(s => s.id === ev.sport_id)
+                const displayIcon = sport?.icon || cfg.icon
                 return (
                   <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', background: 'var(--bg3)', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 8 }}>
-                    <span style={{ fontSize: 18 }}>{cfg.icon}</span>
+                    <span style={{ fontSize: 18 }}>{displayIcon}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--txt1)' }}>{ev.title}</div>
                       <div style={{ fontSize: 11, color: 'var(--txt2)' }}>{ev.event_date}{ev.event_time ? ` · ${ev.event_time}` : ''}</div>
