@@ -287,7 +287,7 @@ export default function CalendarPage({ sports, events, sessions, addEvent, showT
             {/* Upcoming with multi-select */}
             <Card>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10}}>
-                <CardTitle style={{marginBottom:0}}>Événements à venir ({upcoming.length})</CardTitle>
+                <div style={{fontFamily:'Syne, sans-serif',fontWeight:700,fontSize:15,color:'var(--txt1)'}}>Événements à venir ({upcoming.length})</div>
                 <div style={{display:'flex',gap:8,alignItems:'center'}}>
                   {!selectMode ? (
                     <Btn onClick={()=>setSelectMode(true)} variant="outline" style={{fontSize:12}}>☑️ Sélectionner</Btn>
