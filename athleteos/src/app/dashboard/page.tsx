@@ -11,7 +11,6 @@ import ProfilePage      from '@/components/modules/ProfilePage'
 import StravaPage       from '@/components/modules/StravaPage'
 import ExercisePage     from '@/components/modules/ExercisePage'
 import ChartsPage       from '@/components/modules/ChartsPage'
-import CalendarSyncPage from '@/components/modules/CalendarSyncPage'
 
 const NAV = [
   { id: 'dashboard',    icon: '⚡', label: 'Dashboard' },
@@ -30,7 +29,6 @@ const NAV = [
 
 const NAV_INTEGRATIONS = [
   { id: 'strava',       icon: '🟠', label: 'Strava' },
-  { id: 'calsync',      icon: '🔄', label: 'Sync Calendrier' },
 ]
 
 export default function DashboardLayout() {
@@ -147,7 +145,7 @@ export default function DashboardLayout() {
   const pages: Record<string, React.ReactNode> = {
     dashboard:    <DashboardHome    {...ctx} />,
     sessions:     <SessionsPage     {...ctx} />,
-    calendar:     <CalendarPage     {...ctx} />,
+    calendar:     <CalendarPage     {...ctx} setEvents={setEvents} />,
     goals:        <GoalsPage        {...ctx} />,
     charts:       <ChartsPage       {...ctx} />,
     analytics:    <AnalyticsPage    {...ctx} />,
@@ -158,7 +156,6 @@ export default function DashboardLayout() {
     gamification: <GamificationPage {...ctx} />,
     journal:      <JournalPage      {...ctx} />,
     strava:       <StravaPage       {...ctx} />,
-    calsync:      <CalendarSyncPage {...ctx} />,
     profile:      <ProfilePage      {...ctx} />,
   }
 
