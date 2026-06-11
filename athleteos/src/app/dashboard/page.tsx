@@ -136,7 +136,7 @@ export default function DashboardLayout() {
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg1)' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#4f8ef7,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 16px' }}>⚡</div>
+        <img src="/logo.png" alt="AthleteOS" style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', margin: '0 auto 16px' }} />
         <div style={{ color: 'var(--txt2)', fontSize: 14 }}>Chargement…</div>
       </div>
     </div>
@@ -181,7 +181,7 @@ export default function DashboardLayout() {
         overflow: 'hidden', zIndex: 10,
       }}>
         <div onClick={() => setCollapsed(c => !c)} style={{ padding: '20px 16px 22px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flexShrink: 0 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,var(--a1),var(--a2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>⚡</div>
+          <img src="/logo.png" alt="AthleteOS" style={{ width: 34, height: 34, borderRadius: 9, objectFit: 'cover', flexShrink: 0 }} />
           {!collapsed && <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--txt1)', whiteSpace: 'nowrap', letterSpacing: '-0.5px' }}>Athlete<span style={{ color: 'var(--a1)' }}>OS</span></span>}
         </div>
 
