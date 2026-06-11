@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 420, position: 'relative' }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4f8ef7,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, margin: '0 auto 16px' }}>⚡</div>
+          <img src="/logo.png" alt="AthleteOS" style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover', margin: '0 auto 16px' }} />
           <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 28, color: 'var(--txt1)', letterSpacing: '-0.5px' }}>
             Athlete<span style={{ color: 'var(--a1)' }}>OS</span>
           </h1>
