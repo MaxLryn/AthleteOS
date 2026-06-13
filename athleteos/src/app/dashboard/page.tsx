@@ -11,6 +11,7 @@ import ProfilePage      from '@/components/modules/ProfilePage'
 import StravaPage       from '@/components/modules/StravaPage'
 import ExercisePage     from '@/components/modules/ExercisePage'
 import ChartsPage       from '@/components/modules/ChartsPage'
+import ForumPage        from '@/components/modules/ForumPage'
 
 const NAV = [
   { id: 'dashboard',    icon: '⚡', label: 'Dashboard' },
@@ -25,6 +26,7 @@ const NAV = [
   { id: 'timeline',     icon: '🗓️', label: 'Timeline' },
   { id: 'gamification', icon: '🏆', label: 'Gamification' },
   { id: 'journal',      icon: '📔', label: 'Journal' },
+  { id: 'forum',        icon: '💬', label: 'Forum' },
 ]
 
 const NAV_INTEGRATIONS = [
@@ -144,7 +146,7 @@ export default function DashboardLayout() {
 
   const pages: Record<string, React.ReactNode> = {
     dashboard:    <DashboardHome    {...ctx} />,
-    sessions:     <SessionsPage     {...ctx} />,
+    sessions:     <SessionsPage     {...ctx} setSessions={setSessions} />,
     calendar:     <CalendarPage     {...ctx} setEvents={setEvents} />,
     goals:        <GoalsPage        {...ctx} />,
     charts:       <ChartsPage       {...ctx} />,
@@ -157,6 +159,7 @@ export default function DashboardLayout() {
     journal:      <JournalPage      {...ctx} />,
     strava:       <StravaPage       {...ctx} />,
     profile:      <ProfilePage      {...ctx} />,
+    forum:        <ForumPage        {...ctx} />,
   }
 
   const NavItem = ({ n }: { n: typeof NAV[0] }) => (
