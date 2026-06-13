@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, ModalActions, Select, Input, Textarea, Range } from '@/components/ui'
 import type { Sport, Session } from '@/types'
 
@@ -8,9 +8,12 @@ interface Props {
   onClose: () => void
   sports: Sport[]
   onSave: (data: Partial<Session>) => Promise<void>
+  editSession?: Session | null
 }
 
-export default function SessionModal({ open, onClose, sports, onSave }: Props) {
+export default function SessionModal({ open, onClose, sports, onSave, editSession }: Props) {
+  const isEdit = !!editSession
+
   const [sportId, setSportId] = useState(sports[0]?.id || '')
   const [date, setDate]       = useState(new Date().toISOString().slice(0, 10))
   const [duration, setDuration] = useState(60)
@@ -26,6 +29,32 @@ export default function SessionModal({ open, onClose, sports, onSave }: Props) {
   const [goals, setGoals]     = useState('')
   const [assists, setAssists] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editSession) {
+      setSportId(editSession.sport_id || sports[0]?.id || '')
+      setDate(editSession.date)
+      setDuration(editSession.duration || 60)
+      setType(editSession.type || '')
+      setNote(editSession.note || '')
+      setEnergy(editSession.energy || 7)
+      setFatigue(editSession.fatigue || 4)
+      setDistance(editSession.distance ? String(editSession.distance) : '')
+      setPace(editSession.pace || '')
+      setHR(editSession.heart_rate ? String(editSession.heart_rate) : '')
+      setResult(editSession.result || '')
+      setScore(editSession.score_text || '')
+      setGoals(editSession.goals_scored != null ? String(editSession.goals_scored) : '')
+      setAssists(editSession.assists != null ? String(editSession.assists) : '')
+    } else if (open) {
+      // reset for new session
+      setSportId(sports[0]?.id || '')
+      setDate(new Date().toISOString().slice(0, 10))
+      setDuration(60); setType(''); setNote(''); setEnergy(7); setFatigue(4)
+      setDistance(''); setPace(''); setHR(''); setResult(''); setScore(''); setGoals(''); setAssists('')
+    }
+  }, [editSession, open, sports])
 
   const sport = sports.find(s => s.id === sportId)
   const isRunning = sport?.label.toLowerCase().includes('course')
@@ -52,12 +81,10 @@ export default function SessionModal({ open, onClose, sports, onSave }: Props) {
     })
     setLoading(false)
     onClose()
-    // reset
-    setType(''); setNote(''); setDistance(''); setPace(''); setHR(''); setResult(''); setScore(''); setGoals(''); setAssists('')
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="➕ Nouvelle séance">
+    <Modal open={open} onClose={onClose} title={isEdit ? '✏️ Modifier la séance' : '➕ Nouvelle séance'}>
       <Select label="Sport" value={sportId} onChange={e => setSportId(e.target.value)}>
         {sports.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
       </Select>
@@ -102,7 +129,7 @@ export default function SessionModal({ open, onClose, sports, onSave }: Props) {
 
       <Textarea label="Notes / observations" placeholder="PR, ressenti, exercices…" value={note} onChange={e => setNote(e.target.value)} />
 
-      <ModalActions onCancel={onClose} onConfirm={handleSave} loading={loading} confirmLabel="Enregistrer la séance" />
+      <ModalActions onCancel={onClose} onConfirm={handleSave} loading={loading} confirmLabel={isEdit ? 'Enregistrer les modifications' : 'Enregistrer la séance'} />
     </Modal>
   )
 }
