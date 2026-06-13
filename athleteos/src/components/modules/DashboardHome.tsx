@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardTitle, Pill, Topbar, Heatmap, MiniBarChart, RadialScore, ProgressBar } from '@/components/ui'
 import SessionModal from './SessionModal'
 import DailyRecommendation from './DailyRecommendation'
-import type { Sport, Session, CalendarEvent, Goal, Profile } from '@/types'
+import { supabase } from '@/lib/supabase'
+import type { Sport, Session, CalendarEvent, Goal, Profile, SportCriteria } from '@/types'
 import { EVENT_TYPE_CONFIG } from '@/types'
 
 interface Props {
@@ -20,6 +21,13 @@ interface Props {
 
 export default function DashboardHome({ profile, sports, sessions, events, goals, onNav, addSession, showToast }: Props) {
   const [sessionModal, setSessionModal] = useState(false)
+  const [criteria, setCriteria] = useState<SportCriteria[]>([])
+
+  useEffect(() => {
+    supabase.from('sport_criteria').select('*').order('position').then(({ data }) => {
+      if (data) setCriteria(data as SportCriteria[])
+    })
+  }, [])
 
   const totalSessions = sessions.length
   const totalHours    = (sessions.reduce((a, s) => a + (s.duration || 0), 0) / 60).toFixed(1)
@@ -233,7 +241,7 @@ export default function DashboardHome({ profile, sports, sessions, events, goals
         </div>
       </div>
 
-      <SessionModal open={sessionModal} onClose={() => setSessionModal(false)} sports={sports} onSave={addSession} />
+      <SessionModal open={sessionModal} onClose={() => setSessionModal(false)} sports={sports} criteria={criteria} onSave={addSession} />
     </div>
   )
 }
