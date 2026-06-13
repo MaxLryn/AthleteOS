@@ -1,23 +1,39 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Card, CardTitle, Topbar, Input, Btn } from '@/components/ui'
-import type { Profile } from '@/types'
+import { Card, CardTitle, Topbar, Input, Btn, Select } from '@/components/ui'
+import type { Profile, Sport } from '@/types'
 
 interface Props {
   profile: Profile | null
+  sports: Sport[]
   showToast: (msg: string, type?: 'success' | 'error') => void
   onProfileUpdate: (p: Profile) => void
   [key: string]: unknown
 }
 
-export default function ProfilePage({ profile, showToast, onProfileUpdate }: Props) {
+const LEVELS = [
+  { id: 'beginner', label: '🌱 Débutant' },
+  { id: 'intermediate', label: '⚡ Intermédiaire' },
+  { id: 'advanced', label: '🔥 Avancé' },
+  { id: 'expert', label: '🏆 Expert' },
+]
+
+export default function ProfilePage({ profile, sports, showToast, onProfileUpdate }: Props) {
   const [fullName, setFullName]   = useState(profile?.full_name || '')
   const [username, setUsername]   = useState(profile?.username || '')
   const [bio, setBio]             = useState((profile as any)?.bio || '')
   const [location, setLocation]   = useState((profile as any)?.location || '')
   const [isPublic, setIsPublic]   = useState((profile as any)?.is_public !== false)
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
+  // New fields
+  const [favoriteSport, setFavoriteSport] = useState((profile as any)?.favorite_sport || '')
+  const [level, setLevel]         = useState((profile as any)?.level || 'intermediate')
+  const [mainGoal, setMainGoal]   = useState((profile as any)?.main_goal || '')
+  const [instagram, setInstagram] = useState((profile as any)?.instagram || '')
+  const [stravaProfile, setStravaProfile] = useState((profile as any)?.strava_profile || '')
+  const [website, setWebsite]     = useState((profile as any)?.website || '')
+
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [email, setEmail]         = useState('')
@@ -59,7 +75,11 @@ export default function ProfilePage({ profile, showToast, onProfileUpdate }: Pro
 
     const { data, error } = await supabase
       .from('profiles')
-      .update({ full_name: fullName, username, bio, location, is_public: isPublic, avatar_url: avatarUrl || null })
+      .update({
+        full_name: fullName, username, bio, location, is_public: isPublic, avatar_url: avatarUrl || null,
+        favorite_sport: favoriteSport || null, level, main_goal: mainGoal || null,
+        instagram: instagram || null, strava_profile: stravaProfile || null, website: website || null,
+      })
       .eq('id', user.id)
       .select()
       .single()
@@ -134,34 +154,6 @@ export default function ProfilePage({ profile, showToast, onProfileUpdate }: Pro
               {saving ? '⏳ Sauvegarde…' : '✅ Enregistrer le profil'}
             </Btn>
           </Card>
-        </div>
-
-        {/* Sécurité + compte */}
-        <div>
-          <Card style={{ marginBottom: 16 }}>
-            <CardTitle>🔒 Sécurité</CardTitle>
-            <Input label="Email" type="email" value={email} disabled style={{ opacity: 0.6 }} />
-            <Input label="Nouveau mot de passe" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" />
-            <Input label="Confirmer le mot de passe" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" />
-            <Btn onClick={changePassword} variant="outline" style={{ width: '100%', justifyContent: 'center' }} disabled={!newPassword}>
-              Changer le mot de passe
-            </Btn>
-          </Card>
-
-          <Card style={{ marginBottom: 16 }}>
-            <CardTitle>📊 Mes statistiques</CardTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
-              {[
-                { label: 'Membre depuis', val: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' },
-                { label: 'Plan', val: profile?.plan === 'pro' ? '✦ Pro' : profile?.plan === 'premium' ? '★ Premium' : '○ Free' },
-              ].map(({ label, val }) => (
-                <div key={label} style={{ background: 'var(--bg3)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt1)' }}>{val}</div>
-                  <div style={{ fontSize: 11, color: 'var(--txt2)', marginTop: 3 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
 
           <Card style={{ border: '1px solid rgba(244,63,94,0.2)' }}>
             <CardTitle>⚠️ Zone dangereuse</CardTitle>
@@ -176,6 +168,58 @@ export default function ProfilePage({ profile, showToast, onProfileUpdate }: Pro
             }} style={{ padding: '9px 18px', borderRadius: 9, background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)', color: 'var(--a5)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
               Supprimer mon compte
             </button>
+          </Card>
+        </div>
+
+        {/* Sport profile + Social + Security */}
+        <div>
+          {/* Sport identity */}
+          <Card style={{ marginBottom: 16 }}>
+            <CardTitle>🏅 Profil sportif</CardTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Select label="Sport favori" value={favoriteSport} onChange={e => setFavoriteSport(e.target.value)}>
+                <option value="">— Aucun —</option>
+                {sports.map(s => <option key={s.id} value={s.label}>{s.icon} {s.label}</option>)}
+              </Select>
+              <Select label="Niveau" value={level} onChange={e => setLevel(e.target.value)}>
+                {LEVELS.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
+              </Select>
+            </div>
+            <Input label="Objectif principal" value={mainGoal} onChange={e => setMainGoal(e.target.value)} placeholder="Ex: Courir un marathon, prendre 5kg de muscle…" />
+          </Card>
+
+          {/* Social links */}
+          <Card style={{ marginBottom: 16 }}>
+            <CardTitle>🔗 Réseaux & liens</CardTitle>
+            <Input label="Instagram" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@pseudo" />
+            <Input label="Profil Strava" value={stravaProfile} onChange={e => setStravaProfile(e.target.value)} placeholder="https://strava.com/athletes/…" />
+            <Input label="Site web personnel" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://…" />
+          </Card>
+
+          {/* Security */}
+          <Card style={{ marginBottom: 16 }}>
+            <CardTitle>🔒 Sécurité</CardTitle>
+            <Input label="Email" type="email" value={email} disabled style={{ opacity: 0.6 }} />
+            <Input label="Nouveau mot de passe" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" />
+            <Input label="Confirmer le mot de passe" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" />
+            <Btn onClick={changePassword} variant="outline" style={{ width: '100%', justifyContent: 'center' }} disabled={!newPassword}>
+              Changer le mot de passe
+            </Btn>
+          </Card>
+
+          <Card>
+            <CardTitle>📊 Mes statistiques</CardTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+              {[
+                { label: 'Membre depuis', val: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—' },
+                { label: 'Plan', val: profile?.plan === 'pro' ? '✦ Pro' : profile?.plan === 'premium' ? '★ Premium' : '○ Free' },
+              ].map(({ label, val }) => (
+                <div key={label} style={{ background: 'var(--bg3)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt1)' }}>{val}</div>
+                  <div style={{ fontSize: 11, color: 'var(--txt2)', marginTop: 3 }}>{label}</div>
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
       </div>
