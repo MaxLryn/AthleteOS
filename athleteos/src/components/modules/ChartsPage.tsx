@@ -39,10 +39,15 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
   const [period, setPeriod] = useState('30j')
   const [sportFilter, setSportFilter] = useState('all')
   const [criteria, setCriteria] = useState<SportCriteria[]>([])
+  const [activeCriteria, setActiveCriteria] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     supabase.from('sport_criteria').select('*').order('position').then(({ data }) => {
-      if (data) setCriteria(data as SportCriteria[])
+      if (data) {
+        setCriteria(data as SportCriteria[])
+        // All active by default
+        setActiveCriteria(new Set(['Énergie', 'Fatigue', ...(data as SportCriteria[]).map(c => c.label)]))
+      }
     })
   }, [])
 
@@ -73,6 +78,20 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
   }, [sessions, sportFilter, sportCriteria])
 
   const CRITERIA_COLORS = ['#4f8ef7','#a855f7','#22d3a0','#f59e0b','#f43f5e','#38bdf8','#ec4899','#84cc16']
+
+  // Reset active criteria when sport changes — activate all by default
+  useEffect(() => {
+    const all = new Set(['Énergie', 'Fatigue', ...sportCriteria.map(c => c.label)])
+    setActiveCriteria(all)
+  }, [sportFilter, criteria])
+
+  function toggleCriterion(label: string) {
+    setActiveCriteria(prev => {
+      const next = new Set(prev)
+      next.has(label) ? next.delete(label) : next.add(label)
+      return next
+    })
+  }
 
   // ── Volume par semaine ──────────────────────────────────
   const weeklyVolume = useMemo(() => {
@@ -114,6 +133,7 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
   const runData = useMemo(() => {
     return sessions
       .filter(s => s.distance && s.distance > 0)
+      .filter(s => sportFilter === 'all' || s.sport_id === sportFilter)
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(-20)
       .map(s => ({
@@ -121,7 +141,7 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
         Distance: s.distance || 0,
         FC: s.heart_rate || 0,
       }))
-  }, [sessions])
+  }, [sessions, sportFilter])
 
   // ── Répartition des séances par sport (bar) ────────────
   const sportData = useMemo(() => {
@@ -323,16 +343,38 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
                 </div>
               ) : (
                 <>
+                  {/* Toggle buttons */}
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:16 }}>
+                    {[
+                      { label:'Énergie', color:'#22d3a0' },
+                      { label:'Fatigue', color:'#f43f5e' },
+                      ...sportCriteria.map((c,i) => ({ label:c.label, color:CRITERIA_COLORS[i % CRITERIA_COLORS.length] }))
+                    ].map(({ label, color }) => {
+                      const isActive = activeCriteria.has(label)
+                      return (
+                        <button key={label} onClick={() => toggleCriterion(label)} style={{
+                          padding:'5px 12px', borderRadius:20, cursor:'pointer', fontSize:12,
+                          border:`1px solid ${color}`,
+                          background: isActive ? color+'25' : 'var(--bg3)',
+                          color: isActive ? color : 'var(--txt3)',
+                          fontFamily:'DM Sans, sans-serif', fontWeight: isActive ? 600 : 400,
+                          transition:'all .15s', display:'flex', alignItems:'center', gap:5,
+                        }}>
+                          <span style={{ width:8, height:8, borderRadius:'50%', background: isActive ? color : 'var(--border2)', display:'inline-block' }} />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
                   <ResponsiveContainer width="100%" height={240}>
                     <LineChart data={criteriaData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={TooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: 11, color: '#7d899e' }} />
-                      <Line type="monotone" dataKey="Énergie" stroke="#22d3a0" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                      <Line type="monotone" dataKey="Fatigue" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" connectNulls />
-                      {sportCriteria.map((c, i) => (
+                      {activeCriteria.has('Énergie') && <Line type="monotone" dataKey="Énergie" stroke="#22d3a0" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
+                      {activeCriteria.has('Fatigue') && <Line type="monotone" dataKey="Fatigue" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" connectNulls />}
+                      {sportCriteria.map((c, i) => activeCriteria.has(c.label) && (
                         <Line key={c.id} type="monotone" dataKey={c.label} stroke={CRITERIA_COLORS[i % CRITERIA_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
                       ))}
                     </LineChart>
