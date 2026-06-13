@@ -1,17 +1,18 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { Modal, ModalActions, Select, Input, Textarea, Range } from '@/components/ui'
-import type { Sport, Session } from '@/types'
+import type { Sport, Session, SportCriteria } from '@/types'
 
 interface Props {
   open: boolean
   onClose: () => void
   sports: Sport[]
+  criteria: SportCriteria[]
   onSave: (data: Partial<Session>) => Promise<void>
   editSession?: Session | null
 }
 
-export default function SessionModal({ open, onClose, sports, onSave, editSession }: Props) {
+export default function SessionModal({ open, onClose, sports, criteria, onSave, editSession }: Props) {
   const isEdit = !!editSession
 
   const [sportId, setSportId] = useState(sports[0]?.id || '')
@@ -28,6 +29,7 @@ export default function SessionModal({ open, onClose, sports, onSave, editSessio
   const [scoreText, setScore] = useState('')
   const [goals, setGoals]     = useState('')
   const [assists, setAssists] = useState('')
+  const [customRatings, setCustomRatings] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
 
   // Populate form when editing
@@ -47,12 +49,14 @@ export default function SessionModal({ open, onClose, sports, onSave, editSessio
       setScore(editSession.score_text || '')
       setGoals(editSession.goals_scored != null ? String(editSession.goals_scored) : '')
       setAssists(editSession.assists != null ? String(editSession.assists) : '')
+      setCustomRatings(editSession.custom_ratings || {})
     } else if (open) {
       // reset for new session
       setSportId(sports[0]?.id || '')
       setDate(new Date().toISOString().slice(0, 10))
       setDuration(60); setType(''); setNote(''); setEnergy(7); setFatigue(4)
       setDistance(''); setPace(''); setHR(''); setResult(''); setScore(''); setGoals(''); setAssists('')
+      setCustomRatings({})
     }
   }, [editSession, open, sports])
 
@@ -60,6 +64,13 @@ export default function SessionModal({ open, onClose, sports, onSave, editSessio
   const isRunning = sport?.label.toLowerCase().includes('course')
   const isRacket  = sport?.label.toLowerCase().includes('tennis') || sport?.label.toLowerCase().includes('padel')
   const isFootball = sport?.label.toLowerCase().includes('football')
+
+  // Criteria specific to selected sport
+  const sportCriteria = criteria.filter(c => c.sport_id === sportId).sort((a,b) => a.position - b.position)
+
+  function setCriteriaValue(id: string, val: number) {
+    setCustomRatings(prev => ({ ...prev, [id]: val }))
+  }
 
   async function handleSave() {
     setLoading(true)
@@ -78,6 +89,7 @@ export default function SessionModal({ open, onClose, sports, onSave, editSessio
       score_text: scoreText || null,
       goals_scored: goals ? +goals : null,
       assists: assists ? +assists : null,
+      custom_ratings: customRatings,
     })
     setLoading(false)
     onClose()
@@ -126,6 +138,25 @@ export default function SessionModal({ open, onClose, sports, onSave, editSessio
         <Range label="Énergie" value={energy} onChange={setEnergy} />
         <Range label="Fatigue" value={fatigue} onChange={setFatigue} />
       </div>
+
+      {/* Custom sport-specific criteria */}
+      {sportCriteria.length > 0 && (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.8px', marginBottom: 10, fontWeight: 600 }}>
+            Critères {sport?.label}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 14 }}>
+            {sportCriteria.map(c => (
+              <Range
+                key={c.id}
+                label={`${c.icon} ${c.label}`}
+                value={customRatings[c.id] ?? 5}
+                onChange={v => setCriteriaValue(c.id, v)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <Textarea label="Notes / observations" placeholder="PR, ressenti, exercices…" value={note} onChange={e => setNote(e.target.value)} />
 
