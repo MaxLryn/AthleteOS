@@ -27,8 +27,19 @@ export type Session = {
   goals_scored: number | null
   assists: number | null
   minutes_played: number | null
+  custom_ratings: Record<string, number> | null
   created_at: string
   sport?: Sport
+}
+
+export type SportCriteria = {
+  id: string
+  user_id: string
+  sport_id: string
+  label: string
+  icon: string
+  position: number
+  created_at: string
 }
 
 export type Exercise = {
