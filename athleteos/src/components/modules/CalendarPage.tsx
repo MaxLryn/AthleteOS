@@ -95,6 +95,7 @@ export default function CalendarPage({ sports, events, sessions, addEvent, showT
   const [selectMode,setSelectMode] = useState(false)
   // Edit modal
   const [editingEvent,setEditingEvent] = useState<CalendarEvent|null>(null)
+  const [viewingEvent,setViewingEvent] = useState<CalendarEvent|null>(null)
   const [editTitle,setEditTitle]   = useState('')
   const [editDate,setEditDate]     = useState('')
   const [editTime,setEditTime]     = useState('')
@@ -273,7 +274,7 @@ export default function CalendarPage({ sports, events, sessions, addEvent, showT
                         const sport=sports.find(s=>s.id===ev.sport_id)
                         const displayIcon=ev.type==='spectator'?cfg.icon:(sport?.icon||cfg.icon)
                         return(
-                          <div key={ev.id} style={{fontSize:9,padding:'2px 4px',borderRadius:3,background:cfg.color+'25',color:cfg.color,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:500,display:'flex',alignItems:'center',gap:2}}>
+                          <div key={ev.id} onClick={e=>{e.stopPropagation();setViewingEvent(ev)}} style={{fontSize:9,padding:'2px 4px',borderRadius:3,background:cfg.color+'25',color:cfg.color,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',fontWeight:500,display:'flex',alignItems:'center',gap:2,cursor:'pointer'}}>
                             <span>{displayIcon}</span><span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{ev.title}</span>
                           </div>
                         )
@@ -320,11 +321,11 @@ export default function CalendarPage({ sports, events, sessions, addEvent, showT
                 const displayIcon=ev.type==='spectator'?cfg.icon:(sport?.icon||cfg.icon)
                 const isSelected=selectedIds.has(ev.id)
                 return(
-                  <div key={ev.id} onClick={()=>selectMode&&toggleSelect(ev.id)} style={{
+                  <div key={ev.id} onClick={()=>selectMode?toggleSelect(ev.id):setViewingEvent(ev)} style={{
                     display:'flex',alignItems:'center',gap:14,padding:'12px 14px',
                     background:isSelected?'rgba(79,142,247,.1)':'var(--bg3)',
                     borderRadius:12,border:`1px solid ${isSelected?'var(--a1)':'var(--border)'}`,
-                    marginBottom:8,cursor:selectMode?'pointer':'default',transition:'all .15s',
+                    marginBottom:8,cursor:'pointer',transition:'all .15s',
                   }}>
                     {selectMode && (
                       <div onClick={e=>{e.stopPropagation();toggleSelect(ev.id)}} style={{
@@ -415,6 +416,59 @@ export default function CalendarPage({ sports, events, sessions, addEvent, showT
           </>
         )}
       </div>
+
+      {/* Event detail view modal */}
+      {viewingEvent && (() => {
+        const cfg = EVENT_TYPE_CONFIG[viewingEvent.type]
+        const sport = sports.find(s=>s.id===viewingEvent.sport_id)
+        const displayIcon = viewingEvent.type==='spectator' ? cfg.icon : (sport?.icon || cfg.icon)
+        return (
+          <Modal open={!!viewingEvent} onClose={()=>setViewingEvent(null)} title="📋 Détail de l'événement">
+            <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
+              <div style={{ width:52, height:52, borderRadius:14, background:cfg.color+'18', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, flexShrink:0 }}>{displayIcon}</div>
+              <div>
+                <div style={{ fontSize:16, fontWeight:700, color:'var(--txt1)', fontFamily:'Syne, sans-serif', marginBottom:4 }}>{viewingEvent.title}</div>
+                <Pill color={cfg.color}>{cfg.label}</Pill>
+              </div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--txt2)' }}>
+                <span style={{ fontSize:16 }}>📅</span> {viewingEvent.event_date}
+              </div>
+              {viewingEvent.event_time && (
+                <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--txt2)' }}>
+                  <span style={{ fontSize:16 }}>⏰</span> {viewingEvent.event_time}
+                </div>
+              )}
+              {viewingEvent.location && (
+                <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--txt2)' }}>
+                  <span style={{ fontSize:16 }}>📍</span> {viewingEvent.location}
+                </div>
+              )}
+              {viewingEvent.spectator_sport && (
+                <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--txt2)' }}>
+                  <span style={{ fontSize:16 }}>🏆</span> {viewingEvent.spectator_sport}
+                </div>
+              )}
+              {viewingEvent.broadcast && (
+                <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:'var(--txt2)' }}>
+                  <span style={{ fontSize:16 }}>📡</span> Diffusion : {viewingEvent.broadcast}
+                </div>
+              )}
+              {viewingEvent.description && (
+                <div style={{ marginTop:6, padding:'12px 14px', background:'var(--bg3)', borderRadius:10, border:'1px solid var(--border)', fontSize:13, color:'var(--txt2)', lineHeight:1.7, whiteSpace:'pre-line' }}>
+                  {viewingEvent.description}
+                </div>
+              )}
+            </div>
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button onClick={e=>{const ev=viewingEvent;setViewingEvent(null);openEdit(ev,e as any)}} style={{ padding:'9px 18px', borderRadius:9, border:'1px solid var(--border2)', background:'var(--bg3)', color:'var(--txt1)', cursor:'pointer', fontFamily:'DM Sans, sans-serif', fontSize:13, display:'flex', alignItems:'center', gap:6 }}>✏️ Modifier</button>
+              <button onClick={e=>{deleteSingle(viewingEvent,e as any);setViewingEvent(null)}} style={{ padding:'9px 18px', borderRadius:9, border:'1px solid rgba(244,63,94,.3)', background:'rgba(244,63,94,.1)', color:'var(--a5)', cursor:'pointer', fontFamily:'DM Sans, sans-serif', fontSize:13, display:'flex', alignItems:'center', gap:6 }}>🗑️ Supprimer</button>
+              <Btn onClick={()=>setViewingEvent(null)}>Fermer</Btn>
+            </div>
+          </Modal>
+        )
+      })()}
 
       {/* Edit modal */}
       <Modal open={!!editingEvent} onClose={()=>setEditingEvent(null)} title="✏️ Modifier l'événement">
