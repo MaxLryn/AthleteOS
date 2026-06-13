@@ -68,6 +68,19 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
   // Criteria specific to selected sport
   const sportCriteria = criteria.filter(c => c.sport_id === sportId).sort((a,b) => a.position - b.position)
 
+  // Ensure every criterion for the selected sport has a value (default 5) so it's always saved
+  useEffect(() => {
+    if (sportCriteria.length === 0) return
+    setCustomRatings(prev => {
+      const next = { ...prev }
+      let changed = false
+      sportCriteria.forEach(c => {
+        if (next[c.id] == null) { next[c.id] = 5; changed = true }
+      })
+      return changed ? next : prev
+    })
+  }, [sportId, criteria])
+
   function setCriteriaValue(id: string, val: number) {
     setCustomRatings(prev => ({ ...prev, [id]: val }))
   }
