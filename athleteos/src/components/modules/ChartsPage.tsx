@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -7,7 +7,8 @@ import {
   Legend,
 } from 'recharts'
 import { Card, CardTitle, Topbar } from '@/components/ui'
-import type { Session, Sport, Goal } from '@/types'
+import { supabase } from '@/lib/supabase'
+import type { Session, Sport, Goal, SportCriteria } from '@/types'
 
 interface Props {
   sessions: Session[]
@@ -37,12 +38,41 @@ const TooltipStyle = {
 export default function ChartsPage({ sessions, sports, goals }: Props) {
   const [period, setPeriod] = useState('30j')
   const [sportFilter, setSportFilter] = useState('all')
+  const [criteria, setCriteria] = useState<SportCriteria[]>([])
+
+  useEffect(() => {
+    supabase.from('sport_criteria').select('*').order('position').then(({ data }) => {
+      if (data) setCriteria(data as SportCriteria[])
+    })
+  }, [])
 
   const filtered = useMemo(() => {
     let s = filterByPeriod(sessions, period)
     if (sportFilter !== 'all') s = s.filter(x => x.sport_id === sportFilter)
     return s
   }, [sessions, period, sportFilter])
+
+  // ── Custom criteria progression (only when a specific sport is selected) ──
+  const sportCriteria = sportFilter !== 'all' ? criteria.filter(c => c.sport_id === sportFilter) : []
+
+  const criteriaData = useMemo(() => {
+    if (sportFilter === 'all') return []
+    const sportSessions = sessions
+      .filter(s => s.sport_id === sportFilter)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-20)
+    return sportSessions.map(s => {
+      const point: Record<string, any> = { date: new Date(s.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) }
+      point['Énergie'] = s.energy ?? null
+      point['Fatigue'] = s.fatigue ?? null
+      sportCriteria.forEach(c => {
+        point[c.label] = s.custom_ratings?.[c.id] ?? null
+      })
+      return point
+    })
+  }, [sessions, sportFilter, sportCriteria])
+
+  const CRITERIA_COLORS = ['#4f8ef7','#a855f7','#22d3a0','#f59e0b','#f43f5e','#38bdf8','#ec4899','#84cc16']
 
   // ── Volume par semaine ──────────────────────────────────
   const weeklyVolume = useMemo(() => {
@@ -279,6 +309,44 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
             )}
           </Card>
         </div>
+
+        {/* Custom criteria progression — only when a specific sport is selected */}
+        {sportFilter !== 'all' && (
+          <div style={{ marginTop: 16 }}>
+            <Card>
+              <CardTitle>
+                🎛️ Progression — {sports.find(s => s.id === sportFilter)?.icon} {sports.find(s => s.id === sportFilter)?.label}
+              </CardTitle>
+              {criteriaData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--txt3)', fontSize: 13 }}>
+                  Aucune séance enregistrée pour ce sport
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={criteriaData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={TooltipStyle} />
+                      <Legend wrapperStyle={{ fontSize: 11, color: '#7d899e' }} />
+                      <Line type="monotone" dataKey="Énergie" stroke="#22d3a0" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      <Line type="monotone" dataKey="Fatigue" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" connectNulls />
+                      {sportCriteria.map((c, i) => (
+                        <Line key={c.id} type="monotone" dataKey={c.label} stroke={CRITERIA_COLORS[i % CRITERIA_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                  {sportCriteria.length === 0 && (
+                    <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(79,142,247,.08)', border: '1px solid rgba(79,142,247,.2)', borderRadius: 10, fontSize: 12, color: 'var(--a1)' }}>
+                      💡 Va dans <strong>Séances</strong> → sélectionne ce sport → <strong>🎛️ Critères</strong> pour ajouter des critères personnalisés (ex: coup droit, service…) et suivre leur progression ici.
+                    </div>
+                  )}
+                </>
+              )}
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )
