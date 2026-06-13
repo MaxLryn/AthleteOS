@@ -1,8 +1,9 @@
 'use client'
-import { useState } from 'react'
-import { Card, Topbar, Pill } from '@/components/ui'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Card, Topbar, Pill, Btn, Modal, ModalActions } from '@/components/ui'
 import SessionModal from './SessionModal'
-import type { Sport, Session } from '@/types'
+import type { Sport, Session, SportCriteria } from '@/types'
 
 interface Props {
   sports: Sport[]
@@ -17,15 +18,52 @@ interface Props {
 export default function SessionsPage({ sports, sessions, addSession, addSport, setSessions, showToast }: Props) {
   const [modal, setModal]       = useState(false)
   const [sportModal, setSportModal] = useState(false)
+  const [criteriaModal, setCriteriaModal] = useState(false)
   const [filter, setFilter]     = useState('all')
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [newSport, setNewSport] = useState({ label: '', icon: '⭐', color: '#4f8ef7', is_default: false })
+  const [criteria, setCriteria] = useState<SportCriteria[]>([])
+  const [newCriteriaLabel, setNewCriteriaLabel] = useState('')
+  const [newCriteriaIcon, setNewCriteriaIcon] = useState('⭐')
+  const [savingCriteria, setSavingCriteria] = useState(false)
 
   const filtered = filter === 'all' ? sessions : sessions.filter(s => s.sport_id === filter)
+  const criteriaSportId = filter !== 'all' ? filter : sports[0]?.id
+
+  useEffect(() => { loadCriteria() }, [])
+
+  async function loadCriteria() {
+    const { data } = await supabase.from('sport_criteria').select('*').order('position')
+    if (data) setCriteria(data as SportCriteria[])
+  }
+
+  async function addCriteria() {
+    if (!newCriteriaLabel || !criteriaSportId) return
+    setSavingCriteria(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const existingForSport = criteria.filter(c => c.sport_id === criteriaSportId)
+    const { data, error } = await supabase.from('sport_criteria').insert({
+      user_id: user.id, sport_id: criteriaSportId, label: newCriteriaLabel,
+      icon: newCriteriaIcon, position: existingForSport.length,
+    }).select().single()
+    if (!error && data) {
+      setCriteria(prev => [...prev, data as SportCriteria])
+      setNewCriteriaLabel(''); setNewCriteriaIcon('⭐')
+      showToast('Critère ajouté ! ✅')
+    } else if (error) showToast(error.message, 'error')
+    setSavingCriteria(false)
+  }
+
+  async function deleteCriteria(id: string) {
+    if (!confirm('Supprimer ce critère ?')) return
+    const { error } = await supabase.from('sport_criteria').delete().eq('id', id)
+    if (!error) { setCriteria(prev => prev.filter(c => c.id !== id)); showToast('Critère supprimé') }
+    else showToast(error.message, 'error')
+  }
 
   async function handleSave(data: Partial<Session>) {
     if (editingSession) {
-      const { supabase } = await import('@/lib/supabase')
       const { data: updated, error } = await supabase
         .from('sessions')
         .update(data)
@@ -45,7 +83,6 @@ export default function SessionsPage({ sports, sessions, addSession, addSport, s
   async function deleteSession(s: Session, e: React.MouseEvent) {
     e.stopPropagation()
     if (!confirm('Supprimer cette séance ?')) return
-    const { supabase } = await import('@/lib/supabase')
     const { error } = await supabase.from('sessions').delete().eq('id', s.id)
     if (!error) {
       setSessions(sessions.filter(x => x.id !== s.id))
@@ -64,13 +101,16 @@ export default function SessionsPage({ sports, sessions, addSession, addSport, s
     setModal(true)
   }
 
+  const currentSport = sports.find(s => s.id === criteriaSportId)
+  const currentSportCriteria = criteria.filter(c => c.sport_id === criteriaSportId)
+
   return (
     <div>
       <Topbar title="Séances" subtitle={`${sessions.length} séance${sessions.length > 1 ? 's' : ''} enregistrée${sessions.length > 1 ? 's' : ''}`} action={{ label: 'Ajouter une séance', fn: openNew }} />
 
       <div style={{ padding: '0 28px 28px' }}>
         {/* Filters */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
           {[{ id: 'all', label: 'Toutes', icon: '📋' }, ...sports].map(s => (
             <button key={s.id} onClick={() => setFilter(s.id)} style={{
               padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
@@ -87,6 +127,16 @@ export default function SessionsPage({ sports, sessions, addSession, addSport, s
           </button>
         </div>
 
+        {/* Criteria management button */}
+        {criteriaSportId && (
+          <div style={{ marginBottom: 20 }}>
+            <button onClick={() => setCriteriaModal(true)} style={{ padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--txt2)', fontFamily: 'DM Sans, sans-serif', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              🎛️ Critères {currentSport?.icon} {currentSport?.label}
+              {currentSportCriteria.length > 0 && <Pill color="var(--a1)">{currentSportCriteria.length}</Pill>}
+            </button>
+          </div>
+        )}
+
         {/* Session list */}
         {filtered.length === 0 ? (
           <Card style={{ textAlign: 'center', padding: '40px 20px' }}>
@@ -97,6 +147,7 @@ export default function SessionsPage({ sports, sessions, addSession, addSport, s
           </Card>
         ) : filtered.map(s => {
           const sp = sports.find(x => x.id === s.sport_id)
+          const sCriteria = criteria.filter(c => c.sport_id === s.sport_id)
           return (
             <div key={s.id} onClick={e => openEdit(s, e)} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', transition: 'all .15s' }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: (sp?.color || 'var(--a1)') + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
@@ -118,6 +169,15 @@ export default function SessionsPage({ sports, sessions, addSession, addSport, s
                   {s.goals_scored != null ? ` · ⚽ ${s.goals_scored} but(s)` : ''}
                 </div>
                 {s.note && <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 3 }}>{s.note}</div>}
+                {sCriteria.length > 0 && s.custom_ratings && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                    {sCriteria.map(c => s.custom_ratings?.[c.id] != null && (
+                      <span key={c.id} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'var(--bg4)', color: 'var(--txt2)' }}>
+                        {c.icon} {c.label}: {s.custom_ratings![c.id]}/10
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
                 <div style={{ textAlign: 'center' }}>
@@ -138,7 +198,41 @@ export default function SessionsPage({ sports, sessions, addSession, addSport, s
         })}
       </div>
 
-      <SessionModal open={modal} onClose={() => { setModal(false); setEditingSession(null) }} sports={sports} onSave={handleSave} editSession={editingSession} />
+      <SessionModal open={modal} onClose={() => { setModal(false); setEditingSession(null) }} sports={sports} criteria={criteria} onSave={handleSave} editSession={editingSession} />
+
+      {/* Criteria management modal */}
+      <Modal open={criteriaModal} onClose={() => setCriteriaModal(false)} title={`🎛️ Critères ${currentSport?.icon || ''} ${currentSport?.label || ''}`}>
+        <div style={{ fontSize: 13, color: 'var(--txt2)', marginBottom: 16, lineHeight: 1.7 }}>
+          Ajoute des critères personnalisés (en plus de l'énergie et la fatigue) pour le sport <strong style={{ color: 'var(--txt1)' }}>{currentSport?.label}</strong>. Exemple : coup droit, revers, service…
+        </div>
+
+        {currentSportCriteria.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+            {currentSportCriteria.map(c => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg3)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 13, color: 'var(--txt1)' }}>{c.icon} {c.label}</span>
+                <button onClick={() => deleteCriteria(c.id)} style={{ background: 'none', border: 'none', color: 'var(--txt3)', cursor: 'pointer', fontSize: 13 }}>🗑️</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          <div style={{ width: 70 }}>
+            <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>Icône</label>
+            <input value={newCriteriaIcon} onChange={e => setNewCriteriaIcon(e.target.value)} style={{ width: '100%', padding: '10px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 9, color: 'var(--txt1)', fontSize: 18, outline: 'none', textAlign: 'center' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>Nom du critère</label>
+            <input value={newCriteriaLabel} onChange={e => setNewCriteriaLabel(e.target.value)} placeholder="Ex: Coup droit, Service, Endurance…" style={{ width: '100%', padding: '10px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 9, color: 'var(--txt1)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none' }} />
+          </div>
+          <Btn onClick={addCriteria} disabled={savingCriteria || !newCriteriaLabel}>{savingCriteria ? '…' : '+ Ajouter'}</Btn>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+          <Btn onClick={() => setCriteriaModal(false)}>Fermer</Btn>
+        </div>
+      </Modal>
 
       {/* Sport modal */}
       {sportModal && (
