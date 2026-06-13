@@ -292,25 +292,29 @@ export default function ChartsPage({ sessions, sports, goals }: Props) {
 
         {/* Row 3 — Course distance + Objectifs radar */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* Course chart: only show if 'all' selected AND run data exists, OR if selected sport has distance data */}
+          {runData.length > 0 && (sportFilter === 'all' || runData.length > 0) && (() => {
+            const selectedSportLabel = sports.find(s => s.id === sportFilter)?.label?.toLowerCase() || ''
+            const isRunSport = sportFilter === 'all' || selectedSportLabel.includes('course') || selectedSportLabel.includes('run') || selectedSportLabel.includes('trail') || selectedSportLabel.includes('marche')
+            if (!isRunSport) return null
+            return (
           <Card>
             <CardTitle>🏃 Course — Distance & FC</CardTitle>
-            {runData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--txt3)', fontSize: 13 }}>Aucune sortie course enregistrée avec distance</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={runData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={TooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: '#7d899e' }} />
-                  <Line yAxisId="left" type="monotone" dataKey="Distance" stroke="#22d3a0" strokeWidth={2} dot={{ r: 3, fill: '#22d3a0' }} />
-                  <Line yAxisId="right" type="monotone" dataKey="FC" stroke="#f43f5e" strokeWidth={2} dot={false} strokeDasharray="4 2" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={runData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#3d4a5c' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 11, color: '#7d899e' }} />
+                <Line yAxisId="left" type="monotone" dataKey="Distance" stroke="#22d3a0" strokeWidth={2} dot={{ r: 3, fill: '#22d3a0' }} />
+                <Line yAxisId="right" type="monotone" dataKey="FC" stroke="#f43f5e" strokeWidth={2} dot={false} strokeDasharray="4 2" />
+              </LineChart>
+            </ResponsiveContainer>
           </Card>
+            )
+          })()}
 
           <Card>
             <CardTitle>🎯 Progression des objectifs</CardTitle>
