@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
 // ── CARD ──────────────────────────────────────────────────
 export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
-    <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 16, padding: '20px 22px', ...style }}>
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px 18px', ...style }}>
       {children}
     </div>
   )
@@ -12,7 +12,7 @@ export function Card({ children, style }: { children: ReactNode; style?: CSSProp
 
 export function SmallCard({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
-    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 12, padding: '13px 15px', ...style }}>
+    <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', ...style }}>
       {children}
     </div>
   )
@@ -26,7 +26,7 @@ export function CardTitle({ children }: { children: ReactNode }) {
 // ── PILL ──────────────────────────────────────────────────
 export function Pill({ children, color }: { children: ReactNode; color: string }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: color + '20', color }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: color + '20', color, whiteSpace: 'nowrap' }}>
       {children}
     </span>
   )
@@ -37,7 +37,14 @@ export function Btn({ children, onClick, variant = 'primary', style, type = 'but
   children: ReactNode; onClick?: () => void; variant?: 'primary' | 'outline' | 'ghost'
   style?: CSSProperties; type?: 'button' | 'submit'; disabled?: boolean
 }) {
-  const base: CSSProperties = { padding: '9px 18px', borderRadius: 9, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 13, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', transition: 'opacity .15s', opacity: disabled ? 0.6 : 1, ...style }
+  const base: CSSProperties = {
+    padding: '10px 18px', borderRadius: 10, cursor: disabled ? 'not-allowed' : 'pointer',
+    fontSize: 13, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
+    display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none',
+    transition: 'opacity .15s', opacity: disabled ? 0.6 : 1,
+    minHeight: 42, // touch-friendly
+    ...style
+  }
   const variants: Record<string, CSSProperties> = {
     primary: { background: 'var(--a1)', color: '#fff' },
     outline: { background: 'var(--bg3)', color: 'var(--txt1)', border: '1px solid var(--border2)' },
@@ -47,8 +54,8 @@ export function Btn({ children, onClick, variant = 'primary', style, type = 'but
 }
 
 // ── INPUT ─────────────────────────────────────────────────
-export function Input({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
-  const style: CSSProperties = { width: '100%', padding: '10px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 9, color: 'var(--txt1)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none' }
+export function Input({ label, style: customStyle, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
+  const style: CSSProperties = { width: '100%', padding: '11px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, color: 'var(--txt1)', fontSize: 14, fontFamily: 'DM Sans, sans-serif', outline: 'none', ...customStyle }
   return (
     <div style={{ marginBottom: 14 }}>
       {label && <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>{label}</label>}
@@ -59,7 +66,7 @@ export function Input({ label, ...props }: React.InputHTMLAttributes<HTMLInputEl
 
 // ── SELECT ────────────────────────────────────────────────
 export function Select({ label, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { label?: string; children: ReactNode }) {
-  const style: CSSProperties = { width: '100%', padding: '10px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 9, color: 'var(--txt1)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none' }
+  const style: CSSProperties = { width: '100%', padding: '11px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, color: 'var(--txt1)', fontSize: 14, fontFamily: 'DM Sans, sans-serif', outline: 'none' }
   return (
     <div style={{ marginBottom: 14 }}>
       {label && <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>{label}</label>}
@@ -70,7 +77,7 @@ export function Select({ label, children, ...props }: React.SelectHTMLAttributes
 
 // ── TEXTAREA ──────────────────────────────────────────────
 export function Textarea({ label, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label?: string }) {
-  const style: CSSProperties = { width: '100%', padding: '10px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 9, color: 'var(--txt1)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none', minHeight: 80, resize: 'vertical' }
+  const style: CSSProperties = { width: '100%', padding: '11px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 10, color: 'var(--txt1)', fontSize: 14, fontFamily: 'DM Sans, sans-serif', outline: 'none', minHeight: 80, resize: 'vertical' }
   return (
     <div style={{ marginBottom: 14 }}>
       {label && <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>{label}</label>}
@@ -100,22 +107,36 @@ export function ProgressBar({ value, color, height = 4 }: { value: number; color
   )
 }
 
-// ── MODAL ─────────────────────────────────────────────────
+// ── MODAL — fully responsive ───────────────────────────────
 export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+    // Prevent body scroll when modal open
+    if (open) document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handler)
+      document.body.style.overflow = ''
+    }
+  }, [onClose, open])
 
   if (!open) return null
+
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div ref={ref} style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 20, padding: '28px 32px', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', animation: 'fadeUp .15s ease' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 18, color: 'var(--txt1)' }}>{title}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--txt3)', fontSize: 20, cursor: 'pointer', padding: '0 4px' }}>✕</button>
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      className="modal-overlay"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+    >
+      <div
+        ref={ref}
+        className="modal-content"
+        style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 20, padding: '24px 24px', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', animation: 'fadeUp .15s ease' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--txt1)' }}>{title}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--txt3)', fontSize: 20, cursor: 'pointer', padding: '4px 8px', borderRadius: 8, minHeight: 'auto' }}>✕</button>
         </div>
         {children}
       </div>
@@ -135,23 +156,26 @@ export function ModalActions({ onCancel, onConfirm, confirmLabel = 'Enregistrer'
   )
 }
 
-// ── TOPBAR ────────────────────────────────────────────────
+// ── TOPBAR — responsive ────────────────────────────────────
 export function Topbar({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; fn: () => void } }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 28px 0', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-      <div>
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 22, color: 'var(--txt1)', letterSpacing: '-0.5px', margin: 0 }}>{title}</h1>
-        {subtitle && <p style={{ color: 'var(--txt2)', fontSize: 13, marginTop: 3 }}>{subtitle}</p>}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 0', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ minWidth: 0 }}>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: 'var(--txt1)', letterSpacing: '-0.5px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h1>
+        {subtitle && <p style={{ color: 'var(--txt2)', fontSize: 12, marginTop: 2 }}>{subtitle}</p>}
       </div>
-      {action && <Btn onClick={action.fn}>➕ {action.label}</Btn>}
+      {action && (
+        <button onClick={action.fn} style={{ padding: '9px 16px', borderRadius: 10, background: 'var(--a1)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          ➕ {action.label}
+        </button>
+      )}
     </div>
   )
 }
 
 // ── HEATMAP ───────────────────────────────────────────────
 export function Heatmap({ sessions }: { sessions: { date: string }[] }) {
-  const weeks = 52
-  const months = ['Juin','Juil','Août','Sep','Oct','Nov','Déc','Jan','Fév','Mar','Avr','Mai']
+  const weeks = 26 // 6 months on mobile
   const opacities = [0, 0.18, 0.45, 0.7, 1]
   const today = new Date()
   const cells = Array.from({ length: weeks * 7 }, (_, i) => {
@@ -164,9 +188,6 @@ export function Heatmap({ sessions }: { sessions: { date: string }[] }) {
   })
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 10, color: 'var(--txt3)' }}>
-        {months.map(m => <span key={m}>{m}</span>)}
-      </div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks}, 1fr)`, gap: 2 }}>
         {cells.map((c, i) => (
           <div key={i} title={c.ds} style={{
@@ -176,11 +197,6 @@ export function Heatmap({ sessions }: { sessions: { date: string }[] }) {
           }} />
         ))}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, justifyContent: 'flex-end', fontSize: 10, color: 'var(--txt3)' }}>
-        <span>Moins</span>
-        {[0,1,2,3,4].map(v => <div key={v} style={{ width: 10, height: 10, borderRadius: 2, background: v===0?'rgba(255,255,255,0.05)':'var(--a1)', opacity: opacities[v] }} />)}
-        <span>Plus</span>
-      </div>
     </div>
   )
 }
@@ -189,7 +205,7 @@ export function Heatmap({ sessions }: { sessions: { date: string }[] }) {
 export function MiniBarChart({ data, color = 'var(--a1)', height = 80 }: { data: { label: string; value: number }[]; color?: string; height?: number }) {
   const max = Math.max(...data.map(d => d.value)) || 1
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height }}>
       {data.map((d, i) => (
         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
           <div style={{ width: '100%', background: color, borderRadius: '3px 3px 0 0', height: `${(d.value / max) * 100}%`, opacity: i === data.length - 1 ? 1 : 0.5 }} />
