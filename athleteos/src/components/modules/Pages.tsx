@@ -1,89 +1,68 @@
 'use client'
-import { useState } from 'react'
-import { Card, CardTitle, Topbar, Pill, Modal, ModalActions, Input, Select, ProgressBar, MiniBarChart, Heatmap } from '@/components/ui'
-import type { Sport, Session, Goal, CalendarEvent, JournalEntry, Profile } from '@/types'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Card, CardTitle, Topbar, Pill, Btn, Modal, ModalActions, Input, Select, Textarea, ProgressBar, MiniBarChart } from '@/components/ui'
+import type { Sport, Session, Goal, Profile } from '@/types'
 
-type PageProps = {
-  profile?: Profile | null
-  sports: Sport[]
-  sessions: Session[]
-  events: CalendarEvent[]
-  goals: Goal[]
-  addGoal: (data: Partial<Goal>) => Promise<void>
-  updateGoal: (id: string, current: number) => Promise<void>
-  addSession: (data: Partial<Session>) => Promise<void>
-  showToast: (msg: string, type?: 'success' | 'error') => void
-  [key: string]: unknown
-}
+// ════════════════════════════════════════════════════════════
+// GOALS PAGE
+// ════════════════════════════════════════════════════════════
+interface GoalsProps { sports: Sport[]; goals: Goal[]; addGoal: (d: Partial<Goal>) => Promise<void>; updateGoal: (id: string, current: number) => Promise<void>; showToast: (m: string, t?: 'success'|'error') => void; [key: string]: unknown }
 
-// ─── GOALS ──────────────────────────────────────────────────────────────────
-export function GoalsPage({ sports, goals, addGoal, updateGoal, showToast }: PageProps) {
+export function GoalsPage({ sports, goals, addGoal, updateGoal, showToast }: GoalsProps) {
   const [modal, setModal] = useState(false)
-  const [sport, setSport] = useState('all')
+  const [sportId, setSportId] = useState('')
   const [title, setTitle] = useState('')
-  const [target, setTarget] = useState(100)
-  const [current, setCurrent] = useState(0)
-  const [unit, setUnit] = useState('km')
+  const [target, setTarget] = useState(10)
+  const [unit, setUnit] = useState('séances')
   const [deadline, setDeadline] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [editing, setEditing] = useState<{ id: string; val: number } | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  const done = goals.filter(g => g.current >= g.target).length
-  const colors = ['#4f8ef7','#22d3a0','#a855f7','#f59e0b','#f43f5e','#38bdf8']
-
-  async function save() {
+  async function handleSave() {
     if (!title) return
-    setLoading(true)
-    const sp = sports.find(s => s.id === sport)
-    await addGoal({ sport_id: sport === 'all' ? null : sport, title, target, current, unit, deadline: deadline || null, color: colors[goals.length % colors.length] })
-    setLoading(false); setModal(false)
-    setTitle(''); setSport('all'); setTarget(100); setCurrent(0); setUnit('km'); setDeadline('')
+    setSaving(true)
+    await addGoal({ sport_id: sportId || null, title, target, current: 0, unit, deadline: deadline || null })
+    setSaving(false); setModal(false); setTitle(''); setTarget(10); setDeadline('')
   }
 
   return (
     <div>
-      <Topbar title="Objectifs" subtitle={`${done} atteint${done > 1 ? 's' : ''} sur ${goals.length}`} action={{ label: 'Nouvel objectif', fn: () => setModal(true) }} />
-      <div style={{ padding: '0 28px 28px' }}>
+      <Topbar title="Objectifs" subtitle={`${goals.length} objectif${goals.length>1?'s':''} en cours`} action={{ label: 'Nouvel objectif', fn: () => setModal(true) }} />
+      <div className="page-pad">
         {goals.length === 0 ? (
-          <Card style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🎯</div>
-            <div style={{ fontSize: 15, color: 'var(--txt1)', marginBottom: 8 }}>Aucun objectif encore</div>
-            <div style={{ fontSize: 13, color: 'var(--txt2)', marginBottom: 20 }}>Définis tes premiers objectifs sportifs</div>
-            <button onClick={() => setModal(true)} style={{ padding: '10px 20px', borderRadius: 9, background: 'var(--a1)', border: 'none', color: '#fff', fontSize: 13, cursor: 'pointer' }}>+ Créer un objectif</button>
+          <Card style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🎯</div>
+            <div style={{ fontSize: 14, color: 'var(--txt1)', marginBottom: 6 }}>Aucun objectif</div>
+            <div style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 16 }}>Fixe-toi un but pour rester motivé</div>
+            <Btn onClick={() => setModal(true)}>+ Créer un objectif</Btn>
           </Card>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
+          <div className="goals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
             {goals.map(g => {
-              const pct = Math.min(100, Math.round((g.current / g.target) * 100))
               const sp = sports.find(s => s.id === g.sport_id)
-              const remain = g.target - g.current
+              const pct = Math.min(100, Math.round((g.current / g.target) * 100))
+              const done = g.current >= g.target
               return (
-                <Card key={g.id} style={{ position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, height: 3, width: `${pct}%`, background: g.color, transition: 'width .5s' }} />
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, paddingTop: 4 }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 18 }}>{sp?.icon || '🎯'}</span>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt1)' }}>{g.title}</span>
-                      </div>
-                      {g.deadline && <div style={{ fontSize: 11, color: 'var(--txt2)', marginTop: 3 }}>Échéance : {g.deadline}</div>}
+                <Card key={g.id} style={{ border: done ? '1px solid rgba(34,211,160,.3)' : undefined }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 18 }}>{sp?.icon || '🎯'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
+                      {g.deadline && <div style={{ fontSize: 10, color: 'var(--txt3)' }}>📅 {g.deadline}</div>}
                     </div>
-                    {pct >= 100 ? <Pill color="var(--a3)">✓ Atteint</Pill> : <Pill color={g.color}>{pct}%</Pill>}
+                    {done && <Pill color="var(--a3)">✓</Pill>}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt2)', marginBottom: 8 }}>
-                    <span>Actuel : <strong style={{ color: 'var(--txt1)' }}>{g.current} {g.unit}</strong></span>
-                    <span>Cible : <strong style={{ color: 'var(--txt1)' }}>{g.target} {g.unit}</strong></span>
+                  <ProgressBar value={pct} color={done ? 'var(--a3)' : 'var(--a1)'} height={6} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11, color: 'var(--txt2)' }}>
+                    <span>{g.current} / {g.target} {g.unit}</span>
+                    <span>{pct}%</span>
                   </div>
-                  <ProgressBar value={pct} color={g.color} height={8} />
-                  {pct < 100 && remain > 0 && (
-                    <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 8 }}>⏳ Il reste {remain} {g.unit}</div>
+                  {!done && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                      <button onClick={() => updateGoal(g.id, Math.max(0, g.current - 1))} style={{ flex: 1, padding: '6px', borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 13 }}>−</button>
+                      <button onClick={() => updateGoal(g.id, g.current + 1)} style={{ flex: 1, padding: '6px', borderRadius: 7, border: '1px solid var(--a1)', background: 'rgba(79,142,247,.1)', color: 'var(--a1)', cursor: 'pointer', fontSize: 13 }}>+</button>
+                    </div>
                   )}
-                  {/* Quick update */}
-                  <div style={{ display: 'flex', gap: 6, marginTop: 12, alignItems: 'center' }}>
-                    <input type="number" defaultValue={g.current} onBlur={e => updateGoal(g.id, +e.target.value)}
-                      style={{ width: 80, padding: '5px 8px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 7, color: 'var(--txt1)', fontSize: 12, fontFamily: 'DM Sans, sans-serif', outline: 'none' }} />
-                    <span style={{ fontSize: 11, color: 'var(--txt3)' }}>{g.unit} (modifier)</span>
-                  </div>
                 </Card>
               )
             })}
@@ -92,491 +71,391 @@ export function GoalsPage({ sports, goals, addGoal, updateGoal, showToast }: Pag
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title="🎯 Nouvel objectif">
-        <Select label="Sport concerné" value={sport} onChange={e => setSport(e.target.value)}>
-          <option value="all">Tous les sports</option>
+        <Select label="Sport (optionnel)" value={sportId} onChange={e => setSportId(e.target.value)}>
+          <option value="">— Tous sports —</option>
           {sports.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
         </Select>
-        <Input label="Titre" placeholder="Courir 1000 km, Bench 110 kg…" value={title} onChange={e => setTitle(e.target.value)} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <Input label="Titre" value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Courir 50km ce mois" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Input label="Cible" type="number" value={target} onChange={e => setTarget(+e.target.value)} />
-          <Input label="Actuel" type="number" value={current} onChange={e => setCurrent(+e.target.value)} />
-          <Input label="Unité" placeholder="km, kg, séances…" value={unit} onChange={e => setUnit(e.target.value)} />
+          <Input label="Unité" value={unit} onChange={e => setUnit(e.target.value)} placeholder="séances, km…" />
         </div>
         <Input label="Échéance (optionnel)" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
-        <ModalActions onCancel={() => setModal(false)} onConfirm={save} loading={loading} confirmLabel="Créer l'objectif" />
+        <ModalActions onCancel={() => setModal(false)} onConfirm={handleSave} loading={saving} confirmLabel="Créer" />
       </Modal>
+
+      <style jsx>{`@media (max-width: 600px) { .goals-grid { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   )
 }
 
-// ─── ANALYTICS ──────────────────────────────────────────────────────────────
-export function AnalyticsPage({ sports, sessions }: PageProps) {
-  const today = new Date()
-  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+// ════════════════════════════════════════════════════════════
+// ANALYTICS PAGE
+// ════════════════════════════════════════════════════════════
+interface AnalyticsProps { sessions: Session[]; sports: Sport[]; [key: string]: unknown }
 
-  const monthlyData = months.map((label, i) => ({
-    label,
-    value: sessions.filter(s => new Date(s.date).getMonth() === i && new Date(s.date).getFullYear() === today.getFullYear()).length
-  }))
+export function AnalyticsPage({ sessions, sports }: AnalyticsProps) {
+  const monthData = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(); d.setMonth(d.getMonth() - (5 - i))
+    const label = d.toLocaleDateString('fr-FR', { month: 'short' })
+    const monthKey = d.toISOString().slice(0, 7)
+    const count = sessions.filter(s => s.date.startsWith(monthKey)).length
+    return { label, value: count }
+  })
 
-  const kmsData = months.map((label, i) => ({
-    label,
-    value: sessions
-      .filter(s => new Date(s.date).getMonth() === i && new Date(s.date).getFullYear() === today.getFullYear() && s.distance)
-      .reduce((a, s) => a + (s.distance || 0), 0)
-  }))
-
-  const weekAgo  = new Date(Date.now() - 7 * 86400000).toISOString().slice(0,10)
-  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0,10)
-  const thisWeek = sessions.filter(s => s.date >= weekAgo).length
-  const thisMonth = sessions.filter(s => s.date >= monthAgo).length
-  const thisYear  = sessions.filter(s => s.date.startsWith(String(today.getFullYear()))).length
+  const avgDuration = sessions.length ? Math.round(sessions.reduce((a, s) => a + (s.duration || 0), 0) / sessions.length) : 0
+  const totalDuration = sessions.reduce((a, s) => a + (s.duration || 0), 0)
+  const avgEnergy = sessions.length ? (sessions.reduce((a, s) => a + (s.energy || 0), 0) / sessions.length).toFixed(1) : '—'
+  const avgFatigue = sessions.length ? (sessions.reduce((a, s) => a + (s.fatigue || 0), 0) / sessions.length).toFixed(1) : '—'
 
   return (
     <div>
-      <Topbar title="Analytics" subtitle="Tendances, comparaisons et évolutions" />
-      <div style={{ padding: '0 28px 28px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 16 }}>
+      <Topbar title="Analytics" subtitle="Statistiques détaillées de tes entraînements" />
+      <div className="page-pad">
+        <div className="kpi-grid-a" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 14 }}>
           {[
-            { label: 'Cette semaine', val: thisWeek, unit: 'séances', col: 'var(--a1)' },
-            { label: 'Ce mois', val: thisMonth, unit: 'séances', col: 'var(--a2)' },
-            { label: 'Cette année', val: thisYear, unit: 'séances', col: 'var(--a3)' },
-          ].map(({ label, val, unit, col }) => (
-            <Card key={label}>
-              <div style={{ fontSize: 11, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.8px', marginBottom: 8 }}>{label}</div>
-              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 28, color: col }}>{val} <span style={{ fontSize: 14, color: 'var(--txt2)', fontWeight: 400 }}>{unit}</span></div>
+            { label: 'Durée moyenne', val: `${avgDuration} min`, col: 'var(--a1)' },
+            { label: 'Temps total', val: `${Math.round(totalDuration/60)}h`, col: 'var(--a3)' },
+            { label: 'Énergie moy.', val: avgEnergy, col: 'var(--a4)' },
+            { label: 'Fatigue moy.', val: avgFatigue, col: 'var(--a5)' },
+          ].map(({ label, val, col }) => (
+            <Card key={label} style={{ textAlign: 'center', padding: '14px 10px' }}>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 18, color: col }}>{val}</div>
+              <div style={{ fontSize: 10, color: 'var(--txt2)', marginTop: 4 }}>{label}</div>
             </Card>
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <Card>
-            <CardTitle>Séances par mois ({today.getFullYear()})</CardTitle>
-            <MiniBarChart data={monthlyData} color="var(--a1)" height={100} />
-          </Card>
-          <Card>
-            <CardTitle>Kilométrage mensuel (course)</CardTitle>
-            <MiniBarChart data={kmsData.map(d => ({ ...d, value: Math.round(d.value) }))} color="var(--a3)" height={100} />
-          </Card>
-        </div>
-
         <Card style={{ marginBottom: 14 }}>
-          <CardTitle>Activité — 12 derniers mois</CardTitle>
-          <Heatmap sessions={sessions} />
+          <CardTitle>Séances par mois (6 derniers mois)</CardTitle>
+          <MiniBarChart data={monthData} height={100} />
         </Card>
 
         <Card>
           <CardTitle>Répartition par sport</CardTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
-            {sports.map(s => {
-              const cnt = sessions.filter(ss => ss.sport_id === s.id).length
-              const pct = sessions.length ? Math.round((cnt / sessions.length) * 100) : 0
-              const hrs = (sessions.filter(ss => ss.sport_id === s.id).reduce((a, ss) => a + (ss.duration || 0), 0) / 60).toFixed(1)
-              return (
-                <div key={s.id} style={{ background: 'var(--bg3)', borderRadius: 12, border: '1px solid var(--border)', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 24 }}>{s.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt1)', marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 11, color: 'var(--txt2)', marginBottom: 6 }}>{cnt} séances · {hrs}h</div>
-                    <ProgressBar value={pct} color={s.color} height={4} />
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: s.color }}>{pct}%</div>
+          {sports.map(s => {
+            const cnt = sessions.filter(x => x.sport_id === s.id).length
+            const pct = sessions.length ? Math.round((cnt / sessions.length) * 100) : 0
+            return (
+              <div key={s.id} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--txt1)' }}>{s.icon} {s.label}</span>
+                  <span style={{ color: 'var(--txt2)' }}>{cnt} ({pct}%)</span>
                 </div>
-              )
-            })}
-          </div>
+                <ProgressBar value={pct} color={s.color} />
+              </div>
+            )
+          })}
         </Card>
       </div>
+      <style jsx>{`
+        @media (max-width: 768px) { .kpi-grid-a { grid-template-columns: repeat(2,1fr) !important; } }
+      `}</style>
     </div>
   )
 }
 
-// ─── HEALTH ─────────────────────────────────────────────────────────────────
-export function HealthPage({ showToast }: PageProps) {
-  const [weight, setWeight]   = useState('')
-  const [fatPct, setFatPct]   = useState('')
-  const [muscle, setMuscle]   = useState('')
-  const [sleep, setSleep]     = useState('')
-  const [hydration, setHydration] = useState('')
-  const [loading, setLoading] = useState(false)
+// ════════════════════════════════════════════════════════════
+// HEALTH PAGE
+// ════════════════════════════════════════════════════════════
+interface HealthProps { sessions: Session[]; showToast: (m: string, t?: 'success'|'error') => void; [key: string]: unknown }
 
-  async function save() {
-    if (!weight && !sleep) { showToast('Remplis au moins le poids ou le sommeil', 'error'); return }
-    setLoading(true)
-    const { supabase } = await import('@/lib/supabase')
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('health_data').insert({
-        user_id: user.id, entry_date: new Date().toISOString().slice(0,10),
-        weight: weight ? +weight : null, fat_pct: fatPct ? +fatPct : null,
-        muscle_mass: muscle ? +muscle : null, sleep_hours: sleep ? +sleep : null,
-        hydration_l: hydration ? +hydration : null,
-      })
-    }
-    setLoading(false)
-    showToast('Données de santé enregistrées ! ❤️')
-    setWeight(''); setFatPct(''); setMuscle(''); setSleep(''); setHydration('')
-  }
+export function HealthPage({ sessions }: HealthProps) {
+  const recentSessions = sessions.slice(0, 10)
+  const avgEnergy = recentSessions.length ? (recentSessions.reduce((a, s) => a + (s.energy || 0), 0) / recentSessions.length).toFixed(1) : '—'
+  const avgFatigue = recentSessions.length ? (recentSessions.reduce((a, s) => a + (s.fatigue || 0), 0) / recentSessions.length).toFixed(1) : '—'
+  const highFatigueDays = recentSessions.filter(s => (s.fatigue || 0) >= 8).length
 
   return (
     <div>
-      <Topbar title="Santé & Recovery" subtitle="Poids, composition, sommeil, hydratation" />
-      <div style={{ padding: '0 28px 28px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
-          <Card>
-            <CardTitle>📊 Saisie du jour</CardTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="Poids (kg)" type="number" placeholder="75.5" value={weight} onChange={e => setWeight(e.target.value)} />
-              <Input label="Masse grasse (%)" type="number" placeholder="14.2" value={fatPct} onChange={e => setFatPct(e.target.value)} />
-              <Input label="Masse musculaire (kg)" type="number" placeholder="62.0" value={muscle} onChange={e => setMuscle(e.target.value)} />
-              <Input label="Sommeil (heures)" type="number" placeholder="7.5" value={sleep} onChange={e => setSleep(e.target.value)} />
-              <Input label="Hydratation (litres)" type="number" placeholder="2.5" value={hydration} onChange={e => setHydration(e.target.value)} />
-            </div>
-            <button onClick={save} disabled={loading} style={{ padding: '10px 20px', borderRadius: 9, background: 'var(--a1)', border: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 500, marginTop: 4 }}>
-              {loading ? '…' : 'Enregistrer'}
-            </button>
+      <Topbar title="Santé & Recovery" subtitle="Surveille ta forme et évite le surentraînement" />
+      <div className="page-pad">
+        <div className="health-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 14 }}>
+          <Card style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, marginBottom: 6 }}>⚡</div>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: 'var(--a3)' }}>{avgEnergy}</div>
+            <div style={{ fontSize: 11, color: 'var(--txt2)' }}>Énergie moyenne</div>
           </Card>
-
-          <div>
-            <Card style={{ marginBottom: 14 }}>
-              <CardTitle>🦴 Prévention des blessures</CardTitle>
-              <div style={{ display: 'flex', gap: 20 }}>
-                <svg viewBox="0 0 120 220" width="100" height="200">
-                  <ellipse cx="60" cy="22" rx="18" ry="20" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="42" y="44" width="36" height="52" rx="8" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="18" y="46" width="22" height="46" rx="6" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="80" y="46" width="22" height="46" rx="6" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="44" y="97" width="14" height="58" rx="6" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="62" y="97" width="14" height="58" rx="6" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="42" y="156" width="16" height="28" rx="5" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                  <rect x="62" y="156" width="16" height="28" rx="5" fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1"/>
-                </svg>
-                <div style={{ flex: 1, fontSize: 12, color: 'var(--txt2)' }}>
-                  <p style={{ marginBottom: 10, lineHeight: 1.7 }}>Clique sur une zone du corps pour signaler une douleur.</p>
-                  <p style={{ color: 'var(--a3)' }}>✓ Aucune blessure signalée</p>
-                </div>
-              </div>
-            </Card>
-            <Card>
-              <CardTitle>💤 Recommandations</CardTitle>
-              <div style={{ fontSize: 12, color: 'var(--txt2)', lineHeight: 1.8 }}>
-                <p>• 7-9h de sommeil pour une récupération optimale</p>
-                <p>• 2-3L d'eau par jour lors des jours d'entraînement</p>
-                <p>• Une journée de repos toutes les 3-4 séances intensives</p>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── COACH ──────────────────────────────────────────────────────────────────
-export function CoachPage({ sessions, goals, sports }: PageProps) {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Bonjour ! 👋 Je suis ton Coach IA. Pose-moi n\'importe quelle question sur ton entraînement, ta nutrition, ta récupération ou tes objectifs.' }
-  ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const totalSessions = sessions.length
-  const totalHours    = (sessions.reduce((a, s) => a + (s.duration || 0), 0) / 60).toFixed(1)
-
-  async function send() {
-    const msg = input.trim()
-    if (!msg) return
-    setInput('')
-    setMessages(m => [...m, { role: 'user', text: msg }])
-    setLoading(true)
-
-    const context = `Tu es un coach sportif IA expert, bienveillant et personnalisé.
-Données de l'athlète :
-- ${totalSessions} séances au total, ${totalHours}h d'entraînement
-- Sports pratiqués : ${sports.map(s => s.label).join(', ')}
-- ${goals.length} objectifs définis, ${goals.filter(g => g.current >= g.target).length} atteints
-- Dernière séance : ${sessions[0] ? `${sports.find(s => s.id === sessions[0].sport_id)?.label || 'Sport'} — ${sessions[0].date}` : 'aucune'}
-Réponds en français, de façon concise (2-4 phrases), motivante et personnalisée.`
-
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: context,
-          messages: [...messages.filter((_, i) => i > 0).map(m => ({ role: m.role, content: m.text })), { role: 'user', content: msg }]
-        })
-      })
-      const data = await res.json()
-      const reply = data.content?.[0]?.text || 'Continue comme ça, tu es sur la bonne voie ! 💪'
-      setMessages(m => [...m, { role: 'assistant', text: reply }])
-    } catch {
-      setMessages(m => [...m, { role: 'assistant', text: 'Maintiens ta régularité — c\'est la clé du succès ! 💪' }])
-    }
-    setLoading(false)
-  }
-
-  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0,10)
-  const thisWeek = sessions.filter(s => s.date >= weekAgo).length
-
-  return (
-    <div>
-      <Topbar title="Coach IA" subtitle="Analyses automatiques & chat personnalisé" />
-      <div style={{ padding: '0 28px 28px', display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
-        {/* Analyses */}
-        <div>
-          <Card style={{ marginBottom: 14 }}>
-            <CardTitle>📊 Analyses automatiques</CardTitle>
-            {[
-              thisWeek === 0 && { icon: '⚠️', col: 'var(--a4)', title: 'Aucune séance cette semaine', body: 'Tu n\'as pas encore entraîné cette semaine. Une courte séance de 30 min suffit à maintenir le cap !' },
-              thisWeek >= 5 && { icon: '🔥', col: 'var(--a3)', title: 'Excellente semaine !', body: `${thisWeek} séances cette semaine. Attention à bien récupérer pour le prochain cycle.` },
-              sessions.length < 5 && { icon: '🚀', col: 'var(--a1)', title: 'Démarrage en cours', body: 'Tu commences ton suivi ! L\'objectif est de créer une habitude régulière. Vise 3 séances par semaine.' },
-              goals.length === 0 && { icon: '🎯', col: 'var(--a2)', title: 'Pas encore d\'objectifs', body: 'Définis tes premiers objectifs dans la section Objectifs pour que je puisse mieux t\'accompagner.' },
-              { icon: '📈', col: 'var(--a3)', title: `${totalSessions} séances au compteur`, body: `Tu cumules ${totalHours}h d'entraînement. Continue sur cette lancée !` },
-            ].filter(Boolean).map((a: any) => (
-              <div key={a.title} style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderLeft: `3px solid ${a.col}`, borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{a.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt1)', marginBottom: 4 }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--txt2)', lineHeight: 1.7 }}>{a.body}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <Card style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, marginBottom: 6 }}>😓</div>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: 'var(--a5)' }}>{avgFatigue}</div>
+            <div style={{ fontSize: 11, color: 'var(--txt2)' }}>Fatigue moyenne</div>
+          </Card>
+          <Card style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, marginBottom: 6 }}>⚠️</div>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: highFatigueDays > 2 ? 'var(--a5)' : 'var(--a3)' }}>{highFatigueDays}</div>
+            <div style={{ fontSize: 11, color: 'var(--txt2)' }}>Jours fatigue élevée</div>
           </Card>
         </div>
 
-        {/* Chat */}
-        <Card style={{ position: 'sticky', top: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg,var(--a1),var(--a2))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15 }}>Chat avec ton coach</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 400, overflowY: 'auto', marginBottom: 12, paddingRight: 4 }}>
-            {messages.map((m, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div style={{ maxWidth: '85%', padding: '10px 14px', borderRadius: 12, background: m.role === 'user' ? 'var(--a1)' : 'var(--bg3)', color: m.role === 'user' ? '#fff' : 'var(--txt1)', fontSize: 13, lineHeight: 1.6, borderBottomRightRadius: m.role === 'user' ? 4 : 12, borderBottomLeftRadius: m.role === 'assistant' ? 4 : 12 }}>
-                  {m.text}
-                </div>
-              </div>
-            ))}
-            {loading && <div style={{ display: 'flex', justifyContent: 'flex-start' }}><div style={{ padding: '10px 14px', borderRadius: 12, background: 'var(--bg3)', color: 'var(--txt2)', fontSize: 13 }}>⏳ …</div></div>}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} placeholder="Pose une question…" style={{ flex: 1, padding: '10px 14px', borderRadius: 9, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--txt1)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none' }} />
-            <button onClick={send} style={{ padding: '10px 16px', borderRadius: 9, background: 'var(--a1)', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' }}>↗</button>
-          </div>
-        </Card>
-      </div>
-    </div>
-  )
-}
+        {highFatigueDays > 2 && (
+          <Card style={{ marginBottom: 14, border: '1px solid rgba(244,63,94,.2)', background: 'rgba(244,63,94,.05)' }}>
+            <div style={{ fontSize: 13, color: 'var(--a5)', fontWeight: 600, marginBottom: 4 }}>⚠️ Signal de surentraînement</div>
+            <div style={{ fontSize: 12, color: 'var(--txt2)', lineHeight: 1.6 }}>Ta fatigue est élevée sur plusieurs séances récentes. Pense à intégrer un jour de repos complet.</div>
+          </Card>
+        )}
 
-// ─── TIMELINE ───────────────────────────────────────────────────────────────
-export function TimelinePage({ sessions, sports }: PageProps) {
-  const sorted = [...sessions].sort((a, b) => a.date.localeCompare(b.date))
-
-  const milestones = [
-    sorted[0] && { date: sorted[0].date, icon: '🚀', title: 'Première séance enregistrée', col: 'var(--a1)', tag: 'Début' },
-    sorted.length >= 10  && { date: sorted[9].date,  icon: '🔥', title: '10 séances atteintes', col: 'var(--a4)', tag: 'Badge' },
-    sorted.length >= 50  && { date: sorted[49].date, icon: '💯', title: '50 séances atteintes', col: 'var(--a2)', tag: 'Badge' },
-    sorted.length >= 100 && { date: sorted[99].date, icon: '🏆', title: '100 séances atteintes', col: 'var(--a3)', tag: 'Badge' },
-    ...sessions.filter(s => s.note?.includes('PR')).slice(0, 5).map(s => {
-      const sp = sports.find(x => x.id === s.sport_id)
-      return { date: s.date, icon: '⚡', title: `PR — ${sp?.label || 'Sport'} : ${s.note}`, col: 'var(--a1)', tag: 'Record' }
-    }),
-    ...sessions.filter(s => s.result === 'win').slice(0, 3).map(s => {
-      const sp = sports.find(x => x.id === s.sport_id)
-      return { date: s.date, icon: '🏅', title: `Victoire en ${sp?.label || 'Sport'}${s.score_text ? ` — ${s.score_text}` : ''}`, col: 'var(--a3)', tag: 'Match' }
-    }),
-  ].filter(Boolean).sort((a: any, b: any) => a.date.localeCompare(b.date)) as any[]
-
-  return (
-    <div>
-      <Topbar title="Timeline Sportive" subtitle="Ton histoire sportive depuis le début" />
-      <div style={{ padding: '0 28px 28px' }}>
-        <Card style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', left: 116, top: 60, bottom: 40, width: 2, background: 'var(--border2)' }} />
-          <CardTitle>Frise chronologique</CardTitle>
-          {milestones.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--txt3)', fontSize: 13 }}>Commence à enregistrer des séances pour construire ta timeline ! 🗓️</div>
-          ) : milestones.map((it, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 20, position: 'relative' }}>
-              <span style={{ fontSize: 11, color: 'var(--txt3)', width: 72, textAlign: 'right', flexShrink: 0, paddingTop: 10 }}>{it.date?.slice(0, 7)}</span>
-              <div style={{ width: 24, height: 24, borderRadius: '50%', background: it.col + '25', border: `2px solid ${it.col}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, position: 'relative', zIndex: 1, marginTop: 6 }}>{it.icon}</div>
-              <div style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderLeft: `3px solid ${it.col}`, borderRadius: 10, padding: '12px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt1)' }}>{it.title}</span>
-                  <Pill color={it.col}>{it.tag}</Pill>
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--txt3)' }}>{it.date}</div>
+        <Card>
+          <CardTitle>Historique récent</CardTitle>
+          {recentSessions.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--txt3)', fontSize: 12, padding: '16px 0' }}>Aucune donnée disponible</div>
+          ) : recentSessions.map(s => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 12, color: 'var(--txt2)' }}>{s.date}</span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <span style={{ fontSize: 11, color: 'var(--a3)' }}>⚡{s.energy || '—'}</span>
+                <span style={{ fontSize: 11, color: 'var(--a5)' }}>😓{s.fatigue || '—'}</span>
               </div>
             </div>
           ))}
         </Card>
       </div>
+      <style jsx>{`@media (max-width: 600px) { .health-grid { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   )
 }
 
-// ─── GAMIFICATION ───────────────────────────────────────────────────────────
-export function GamificationPage({ sessions, goals }: PageProps) {
-  const total = sessions.length
-  const level = Math.floor(total / 10) + 1
-  const xp    = total % 10
-  const doneGoals = goals.filter(g => g.current >= g.target).length
+// ════════════════════════════════════════════════════════════
+// COACH PAGE
+// ════════════════════════════════════════════════════════════
+interface CoachProps { sessions: Session[]; sports: Sport[]; goals: Goal[]; [key: string]: unknown }
 
-  const today = new Date().toISOString().slice(0,10)
-  const dates = Array.from(new Set(sessions.map(s => s.date))).sort((a,b) => b.localeCompare(a))
-  let streak = 0
-  for (let i = 0; i < dates.length; i++) {
-    const exp = new Date(Date.now() - i * 86400000).toISOString().slice(0,10)
-    if (dates[i] === exp) streak++
-    else break
+export function CoachPage({ sessions, sports, goals }: CoachProps) {
+  const [messages, setMessages] = useState<{ role: 'user'|'assistant'; content: string }[]>([
+    { role: 'assistant', content: "Salut ! Je suis ton coach IA 🤖. Pose-moi des questions sur ton entraînement, tes objectifs ou demande-moi des conseils personnalisés !" }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function sendMessage() {
+    if (!input.trim()) return
+    const userMsg = input
+    setMessages(m => [...m, { role: 'user', content: userMsg }])
+    setInput('')
+    setLoading(true)
+    const context = `Tu es un coach sportif expert et bienveillant. Contexte athlète: ${sessions.length} séances enregistrées, ${goals.length} objectifs. Sports pratiqués: ${sports.map(s=>s.label).join(', ')}. Réponds en français, de façon concise et actionnable à: "${userMsg}"`
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: context }] }) })
+      const data = await res.json()
+      setMessages(m => [...m, { role: 'assistant', content: data.content?.[0]?.text || "Désolé, je n'ai pas pu répondre." }])
+    } catch {
+      setMessages(m => [...m, { role: 'assistant', content: "Erreur de connexion, réessaie plus tard." }])
+    }
+    setLoading(false)
   }
 
+  return (
+    <div>
+      <Topbar title="Coach IA" subtitle="Discute avec ton coach personnel" />
+      <div className="page-pad">
+        <Card style={{ height: 'min(60vh, 500px)', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '85%', padding: '10px 14px', borderRadius: 14, fontSize: 13, lineHeight: 1.6, background: m.role === 'user' ? 'var(--a1)' : 'var(--bg3)', color: m.role === 'user' ? '#fff' : 'var(--txt1)', whiteSpace: 'pre-line' }}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {loading && <div style={{ fontSize: 12, color: 'var(--txt3)', fontStyle: 'italic' }}>Le coach réfléchit…</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid var(--border)' }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder="Pose ta question…" style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--txt1)', fontSize: 13, outline: 'none', minWidth: 0 }} />
+            <Btn onClick={sendMessage} disabled={loading || !input.trim()}>Envoyer</Btn>
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════
+// TIMELINE PAGE
+// ════════════════════════════════════════════════════════════
+interface TimelineProps { sessions: Session[]; sports: Sport[]; [key: string]: unknown }
+
+export function TimelinePage({ sessions, sports }: TimelineProps) {
+  const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date))
+  const grouped: Record<string, Session[]> = {}
+  sorted.forEach(s => {
+    const monthKey = s.date.slice(0, 7)
+    if (!grouped[monthKey]) grouped[monthKey] = []
+    grouped[monthKey].push(s)
+  })
+
+  return (
+    <div>
+      <Topbar title="Timeline" subtitle="Ton parcours sportif, chronologiquement" />
+      <div className="page-pad">
+        {Object.keys(grouped).length === 0 ? (
+          <Card style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🗓️</div>
+            <div style={{ fontSize: 14, color: 'var(--txt2)' }}>Aucune séance enregistrée</div>
+          </Card>
+        ) : Object.entries(grouped).map(([month, items]) => (
+          <div key={month} style={{ marginBottom: 20 }}>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--txt2)', marginBottom: 10, textTransform: 'capitalize' }}>
+              {new Date(month + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            </div>
+            <div style={{ position: 'relative', paddingLeft: 20 }}>
+              <div style={{ position: 'absolute', left: 6, top: 6, bottom: 6, width: 2, background: 'var(--border)' }} />
+              {items.map(s => {
+                const sp = sports.find(x => x.id === s.sport_id)
+                return (
+                  <div key={s.id} style={{ position: 'relative', marginBottom: 12 }}>
+                    <div style={{ position: 'absolute', left: -20, top: 4, width: 10, height: 10, borderRadius: '50%', background: sp?.color || 'var(--a1)', border: '2px solid var(--bg1)' }} />
+                    <Card style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 16 }}>{sp?.icon}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt1)' }}>{sp?.label}{s.type ? ` — ${s.type}` : ''}</span>
+                        <span style={{ fontSize: 11, color: 'var(--txt3)', marginLeft: 'auto' }}>{s.date}</span>
+                      </div>
+                      {s.note && <div style={{ fontSize: 11, color: 'var(--txt2)', marginTop: 4 }}>{s.note}</div>}
+                    </Card>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════
+// GAMIFICATION PAGE
+// ════════════════════════════════════════════════════════════
+interface GamificationProps { sessions: Session[]; goals: Goal[]; [key: string]: unknown }
+
+export function GamificationPage({ sessions, goals }: GamificationProps) {
+  const totalSessions = sessions.length
+  const level = Math.floor(totalSessions / 10) + 1
+  const doneGoals = goals.filter(g => g.current >= g.target).length
+
   const badges = [
-    { icon: '🏆', name: 'Première séance',     earned: total >= 1,   desc: 'Bienvenue dans AthleteOS !' },
-    { icon: '🔥', name: '10 séances',           earned: total >= 10,  desc: 'La régularité commence ici' },
-    { icon: '💯', name: '50 séances',           earned: total >= 50,  desc: 'Athlète confirmé' },
-    { icon: '🚀', name: '100 séances',          earned: total >= 100, desc: 'Elite performer' },
-    { icon: '📅', name: 'Streak 7 jours',       earned: streak >= 7,  desc: 'Une semaine sans relâche' },
-    { icon: '🎯', name: 'Premier objectif',     earned: doneGoals >= 1, desc: 'Objectif atteint !' },
-    { icon: '⚡', name: 'Streak 30 jours',      earned: streak >= 30, desc: 'Mensuel en fer' },
-    { icon: '🏅', name: '3 objectifs atteints', earned: doneGoals >= 3, desc: 'Objectifs en série' },
+    { id: 'first', icon: '🎬', label: 'Première séance', unlocked: totalSessions >= 1 },
+    { id: 'five', icon: '5️⃣', label: '5 séances', unlocked: totalSessions >= 5 },
+    { id: 'ten', icon: '🔟', label: '10 séances', unlocked: totalSessions >= 10 },
+    { id: 'fifty', icon: '💯', label: '50 séances', unlocked: totalSessions >= 50 },
+    { id: 'goal1', icon: '🎯', label: '1 objectif atteint', unlocked: doneGoals >= 1 },
+    { id: 'goal5', icon: '🏆', label: '5 objectifs atteints', unlocked: doneGoals >= 5 },
+    { id: 'streak', icon: '🔥', label: 'Streak 7 jours', unlocked: false },
+    { id: 'level5', icon: '⭐', label: 'Niveau 5', unlocked: level >= 5 },
   ]
 
   return (
     <div>
-      <Topbar title="Gamification" subtitle="Badges, niveaux et streaks" />
-      <div style={{ padding: '0 28px 28px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-          <Card>
-            <CardTitle>Niveau Athlète</CardTitle>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg,var(--a2),var(--a1))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 26, color: '#fff' }}>{level}</span>
-              </div>
-              <div>
-                <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--txt1)' }}>
-                  {level < 5 ? 'Débutant' : level < 10 ? 'Intermédiaire' : level < 20 ? 'Confirmé' : 'Expert'}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 8 }}>{xp} / 10 séances → Niveau {level + 1}</div>
-                <ProgressBar value={xp * 10} color="var(--a2)" height={8} />
-              </div>
-            </div>
-          </Card>
-          <Card>
-            <CardTitle>Streaks</CardTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-              {[
-                { t: 'Actuel', v: `${streak}j`, i: '🔥', c: 'var(--a4)' },
-                { t: 'Séances', v: total, i: '💪', c: 'var(--a1)' },
-                { t: 'Objectifs', v: doneGoals, i: '🎯', c: 'var(--a3)' },
-              ].map(({ t, v, i, c }) => (
-                <div key={t} style={{ textAlign: 'center', padding: 14, background: 'var(--bg3)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>{i}</div>
-                  <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: c }}>{v}</div>
-                  <div style={{ fontSize: 11, color: 'var(--txt2)' }}>{t}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+      <Topbar title="Récompenses" subtitle="Tes badges et progression" />
+      <div className="page-pad">
+        <Card style={{ marginBottom: 14, textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 32, color: 'var(--a2)' }}>Niveau {level}</div>
+          <div style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 12 }}>{totalSessions % 10}/10 séances vers le niveau {level + 1}</div>
+          <ProgressBar value={(totalSessions % 10) * 10} color="var(--a2)" height={6} />
+        </Card>
+
         <Card>
-          <CardTitle>Collection de badges</CardTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+          <CardTitle>Badges débloqués</CardTitle>
+          <div className="badge-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             {badges.map(b => (
-              <div key={b.name} style={{ textAlign: 'center', padding: '16px 12px', background: b.earned ? 'var(--bg3)' : 'var(--bg)', borderRadius: 12, border: `1px solid ${b.earned ? 'rgba(79,142,247,.35)' : 'var(--border)'}`, opacity: b.earned ? 1 : 0.45 }}>
-                <div style={{ fontSize: 32, marginBottom: 8, filter: b.earned ? 'none' : 'grayscale(1)' }}>{b.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt1)', marginBottom: 3 }}>{b.name}</div>
-                <div style={{ fontSize: 10, color: 'var(--txt3)' }}>{b.desc}</div>
-                {b.earned && <div style={{ marginTop: 6 }}><Pill color="var(--a3)">✓ Obtenu</Pill></div>}
+              <div key={b.id} style={{ textAlign: 'center', padding: '14px 8px', borderRadius: 12, background: b.unlocked ? 'rgba(168,85,247,.08)' : 'var(--bg3)', border: `1px solid ${b.unlocked ? 'rgba(168,85,247,.3)' : 'var(--border)'}`, opacity: b.unlocked ? 1 : 0.4 }}>
+                <div style={{ fontSize: 26, marginBottom: 6 }}>{b.icon}</div>
+                <div style={{ fontSize: 10, color: 'var(--txt2)', lineHeight: 1.3 }}>{b.label}</div>
               </div>
             ))}
           </div>
         </Card>
       </div>
+      <style jsx>{`
+        @media (max-width: 600px) { .badge-grid { grid-template-columns: repeat(3,1fr) !important; } }
+        @media (max-width: 420px) { .badge-grid { grid-template-columns: repeat(2,1fr) !important; } }
+      `}</style>
     </div>
   )
 }
 
-// ─── JOURNAL ────────────────────────────────────────────────────────────────
-export function JournalPage({ showToast }: PageProps) {
-  const [mood, setMood]           = useState(3)
-  const [motivation, setMotivation] = useState(7)
-  const [stress, setStress]       = useState(3)
-  const [fatigue, setFatigue]     = useState(4)
-  const [energy, setEnergy]       = useState(7)
-  const [note, setNote]           = useState('')
-  const [loading, setLoading]     = useState(false)
+// ════════════════════════════════════════════════════════════
+// JOURNAL PAGE
+// ════════════════════════════════════════════════════════════
+interface JournalProps { showToast: (m: string, t?: 'success'|'error') => void; [key: string]: unknown }
 
-  async function save() {
+interface JournalEntry { id: string; content: string; mood: string; created_at: string }
+
+export function JournalPage({ showToast }: JournalProps) {
+  const [entries, setEntries] = useState<JournalEntry[]>([])
+  const [modal, setModal] = useState(false)
+  const [content, setContent] = useState('')
+  const [mood, setMood] = useState('😊')
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const MOODS = ['😊', '😐', '😞', '💪', '😴', '🔥']
+
+  useEffect(() => { loadEntries() }, [])
+
+  async function loadEntries() {
     setLoading(true)
-    const { supabase } = await import('@/lib/supabase')
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('journal_entries').insert({
-        user_id: user.id, entry_date: new Date().toISOString().slice(0,10),
-        mood, motivation, stress, fatigue, energy, note: note || null
-      })
-    }
+    if (!user) return
+    const { data } = await supabase.from('journal_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+    if (data) setEntries(data as JournalEntry[])
     setLoading(false)
-    showToast('Entrée enregistrée ! 📔')
-    setNote('')
   }
 
-  const RANGE = (label: string, val: number, set: (v: number) => void, color: string) => (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt2)', marginBottom: 6 }}>
-        <span>{label}</span><span style={{ color, fontWeight: 600 }}>{val}/10</span>
-      </div>
-      <input type="range" min={1} max={10} value={val} onChange={e => set(+e.target.value)} style={{ width: '100%' }} />
-    </div>
-  )
+  async function saveEntry() {
+    if (!content.trim()) return
+    setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data, error } = await supabase.from('journal_entries').insert({ user_id: user.id, content, mood }).select().single()
+    if (!error && data) { setEntries(e => [data as JournalEntry, ...e]); showToast('Entrée ajoutée ! 📔') }
+    else if (error) showToast(error.message, 'error')
+    setSaving(false); setModal(false); setContent(''); setMood('😊')
+  }
+
+  async function deleteEntry(id: string) {
+    if (!confirm('Supprimer cette entrée ?')) return
+    const { error } = await supabase.from('journal_entries').delete().eq('id', id)
+    if (!error) { setEntries(e => e.filter(x => x.id !== id)); showToast('Entrée supprimée') }
+  }
 
   return (
     <div>
-      <Topbar title="Journal Personnel" subtitle="Humeur, ressenti, corrélations avec tes performances" />
-      <div style={{ padding: '0 28px 28px', display: 'grid', gridTemplateColumns: '1fr 290px', gap: 16, alignItems: 'start' }}>
-        <Card>
-          <CardTitle>Entrée du {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</CardTitle>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 10 }}>Comment te sens-tu aujourd'hui ?</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[['😞',1],['😐',2],['🙂',3],['😊',4],['🤩',5]].map(([e, v]) => (
-                <button key={v} onClick={() => setMood(+v)} style={{ fontSize: 28, background: mood === +v ? 'rgba(79,142,247,.15)' : 'transparent', border: `1px solid ${mood === +v ? 'var(--a1)' : 'var(--border)'}`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}>{e}</button>
-              ))}
+      <Topbar title="Journal" subtitle="Tes pensées et ressentis au fil du temps" action={{ label: 'Nouvelle entrée', fn: () => setModal(true) }} />
+      <div className="page-pad">
+        {loading ? <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--txt3)' }}>Chargement…</div>
+        : entries.length === 0 ? (
+          <Card style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>📔</div>
+            <div style={{ fontSize: 14, color: 'var(--txt1)', marginBottom: 6 }}>Aucune entrée</div>
+            <Btn onClick={() => setModal(true)}>+ Écrire ma première entrée</Btn>
+          </Card>
+        ) : entries.map(e => (
+          <Card key={e.id} style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>{e.mood}</span>
+                <span style={{ fontSize: 11, color: 'var(--txt3)' }}>{new Date(e.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              </div>
+              <button onClick={() => deleteEntry(e.id)} style={{ background: 'none', border: 'none', color: 'var(--txt3)', cursor: 'pointer', fontSize: 12 }}>🗑️</button>
             </div>
-          </div>
-          {RANGE('Motivation', motivation, setMotivation, 'var(--a1)')}
-          {RANGE('Énergie', energy, setEnergy, 'var(--a3)')}
-          {RANGE('Fatigue', fatigue, setFatigue, 'var(--a4)')}
-          {RANGE('Stress', stress, setStress, 'var(--a5)')}
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 6 }}>Notes libres</label>
-            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Comment s'est passée ta journée ? Ressentis, observations…" style={{ width: '100%', padding: '10px 14px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 9, color: 'var(--txt1)', fontSize: 13, fontFamily: 'DM Sans, sans-serif', outline: 'none', minHeight: 100, resize: 'vertical' }} />
-          </div>
-          <button onClick={save} disabled={loading} style={{ padding: '10px 20px', borderRadius: 9, background: 'var(--a1)', border: 'none', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
-            {loading ? '…' : 'Enregistrer l\'entrée'}
-          </button>
-        </Card>
-
-        <Card>
-          <CardTitle>Corrélations</CardTitle>
-          <div style={{ fontSize: 12, color: 'var(--txt2)', lineHeight: 1.9 }}>
-            <p style={{ marginBottom: 10 }}>📈 <strong style={{ color: 'var(--txt1)' }}>Motivation ↔ Performance</strong><br />Les jours à motivation 8+, tes séances sont 23% plus longues.</p>
-            <p style={{ marginBottom: 10 }}>😴 <strong style={{ color: 'var(--txt1)' }}>Sommeil ↔ Énergie</strong><br />7h+ de sommeil améliore ton énergie perçue de 15%.</p>
-            <p>⚡ <strong style={{ color: 'var(--txt1)' }}>Stress ↔ Durée</strong><br />Les jours de stress élevé, tes séances sont 18% plus courtes.</p>
-          </div>
-        </Card>
+            <div style={{ fontSize: 13, color: 'var(--txt1)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{e.content}</div>
+          </Card>
+        ))}
       </div>
+
+      <Modal open={modal} onClose={() => setModal(false)} title="📔 Nouvelle entrée">
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, color: 'var(--txt2)', display: 'block', marginBottom: 8 }}>Humeur du jour</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {MOODS.map(m => (
+              <button key={m} onClick={() => setMood(m)} style={{ width: 42, height: 42, borderRadius: 10, fontSize: 20, cursor: 'pointer', border: `2px solid ${mood === m ? 'var(--a1)' : 'var(--border2)'}`, background: mood === m ? 'rgba(79,142,247,.1)' : 'var(--bg3)' }}>{m}</button>
+            ))}
+          </div>
+        </div>
+        <Textarea label="Comment s'est passée ta journée ?" value={content} onChange={e => setContent(e.target.value)} placeholder="Raconte ta journée, tes ressentis…" />
+        <ModalActions onCancel={() => setModal(false)} onConfirm={saveEntry} loading={saving} confirmLabel="Enregistrer" />
+      </Modal>
     </div>
   )
 }
-
-// ─── EXPORTS ────────────────────────────────────────────────────────────────
-export { GoalsPage as default }
