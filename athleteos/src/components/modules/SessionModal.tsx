@@ -32,7 +32,6 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
   const [customRatings, setCustomRatings] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
 
-  // Populate form when editing
   useEffect(() => {
     if (editSession) {
       setSportId(editSession.sport_id || sports[0]?.id || '')
@@ -51,7 +50,6 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
       setAssists(editSession.assists != null ? String(editSession.assists) : '')
       setCustomRatings(editSession.custom_ratings || {})
     } else if (open) {
-      // reset for new session
       setSportId(sports[0]?.id || '')
       setDate(new Date().toISOString().slice(0, 10))
       setDuration(60); setType(''); setNote(''); setEnergy(7); setFatigue(4)
@@ -65,18 +63,14 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
   const isRacket  = sport?.label.toLowerCase().includes('tennis') || sport?.label.toLowerCase().includes('padel')
   const isFootball = sport?.label.toLowerCase().includes('football')
 
-  // Criteria specific to selected sport
   const sportCriteria = criteria.filter(c => c.sport_id === sportId).sort((a,b) => a.position - b.position)
 
-  // Ensure every criterion for the selected sport has a value (default 5) so it's always saved
   useEffect(() => {
     if (sportCriteria.length === 0) return
     setCustomRatings(prev => {
       const next = { ...prev }
       let changed = false
-      sportCriteria.forEach(c => {
-        if (next[c.id] == null) { next[c.id] = 5; changed = true }
-      })
+      sportCriteria.forEach(c => { if (next[c.id] == null) { next[c.id] = 5; changed = true } })
       return changed ? next : prev
     })
   }, [sportId, criteria])
@@ -88,21 +82,11 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
   async function handleSave() {
     setLoading(true)
     await onSave({
-      sport_id: sportId || null,
-      date,
-      duration,
-      type,
-      note,
-      energy,
-      fatigue,
-      distance: distance ? +distance : null,
-      pace: pace || null,
-      heart_rate: heartRate ? +heartRate : null,
-      result: result || null,
-      score_text: scoreText || null,
-      goals_scored: goals ? +goals : null,
-      assists: assists ? +assists : null,
-      custom_ratings: customRatings,
+      sport_id: sportId || null, date, duration, type, note, energy, fatigue,
+      distance: distance ? +distance : null, pace: pace || null,
+      heart_rate: heartRate ? +heartRate : null, result: result || null,
+      score_text: scoreText || null, goals_scored: goals ? +goals : null,
+      assists: assists ? +assists : null, custom_ratings: customRatings,
     })
     setLoading(false)
     onClose()
@@ -125,24 +109,22 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <Input label="Distance (km)" type="number" placeholder="10.5" value={distance} onChange={e => setDistance(e.target.value)} />
           <Input label="Allure (min/km)" placeholder="5:04" value={pace} onChange={e => setPace(e.target.value)} />
-          <Input label="FC moyenne (bpm)" type="number" placeholder="162" value={heartRate} onChange={e => setHR(e.target.value)} />
+          <Input label="FC moyenne" type="number" placeholder="162" value={heartRate} onChange={e => setHR(e.target.value)} />
         </div>
       )}
 
       {isRacket && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Select label="Résultat" value={result} onChange={e => setResult(e.target.value)}>
-            <option value="">—</option>
-            <option value="win">Victoire</option>
-            <option value="loss">Défaite</option>
+            <option value="">—</option><option value="win">Victoire</option><option value="loss">Défaite</option>
           </Select>
-          <Input label="Score (ex: 6-4 6-2)" placeholder="6-4 6-2" value={scoreText} onChange={e => setScore(e.target.value)} />
+          <Input label="Score" placeholder="6-4 6-2" value={scoreText} onChange={e => setScore(e.target.value)} />
         </div>
       )}
 
       {isFootball && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Input label="Buts marqués" type="number" value={goals} onChange={e => setGoals(e.target.value)} />
+          <Input label="Buts" type="number" value={goals} onChange={e => setGoals(e.target.value)} />
           <Input label="Passes décisives" type="number" value={assists} onChange={e => setAssists(e.target.value)} />
         </div>
       )}
@@ -152,7 +134,6 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
         <Range label="Fatigue" value={fatigue} onChange={setFatigue} />
       </div>
 
-      {/* Custom sport-specific criteria */}
       {sportCriteria.length > 0 && (
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontSize: 11, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: '.8px', marginBottom: 10, fontWeight: 600 }}>
@@ -160,12 +141,7 @@ export default function SessionModal({ open, onClose, sports, criteria, onSave, 
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 14 }}>
             {sportCriteria.map(c => (
-              <Range
-                key={c.id}
-                label={`${c.icon} ${c.label}`}
-                value={customRatings[c.id] ?? 5}
-                onChange={v => setCriteriaValue(c.id, v)}
-              />
+              <Range key={c.id} label={`${c.icon} ${c.label}`} value={customRatings[c.id] ?? 5} onChange={v => setCriteriaValue(c.id, v)} />
             ))}
           </div>
         </div>
