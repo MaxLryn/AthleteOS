@@ -1,3 +1,24 @@
+export type Profile = {
+  id: string
+  full_name: string | null
+  username: string | null
+  avatar_url: string | null
+  bio: string | null
+  location: string | null
+  is_public: boolean
+  favorite_sport: string | null
+  level: string | null
+  main_goal: string | null
+  instagram: string | null
+  strava_profile: string | null
+  website: string | null
+  cover_color: string | null
+  plan: string | null
+  strava_access_token: string | null
+  strava_refresh_token: string | null
+  created_at: string
+}
+
 export type Sport = {
   id: string
   user_id: string
@@ -44,28 +65,25 @@ export type SportCriteria = {
 
 export type Exercise = {
   name: string
-  sets: number
-  reps: number
-  weight: number
+  sets?: number
+  reps?: number
 }
 
 export type CalendarEvent = {
   id: string
   user_id: string
-  type: EventType
   sport_id: string | null
+  type: 'training' | 'match' | 'tournament' | 'competition' | 'objective' | 'spectator'
   title: string
   event_date: string
   event_time: string | null
   location: string | null
+  description: string | null
   spectator_sport: string | null
   broadcast: string | null
-  description: string | null
   created_at: string
   sport?: Sport
 }
-
-export type EventType = 'training' | 'match' | 'tournament' | 'competition' | 'objective' | 'spectator'
 
 export type Goal = {
   id: string
@@ -74,68 +92,17 @@ export type Goal = {
   title: string
   target: number
   current: number
-  unit: string | null
+  unit: string
   deadline: string | null
-  color: string
   created_at: string
   sport?: Sport
 }
 
-export type JournalEntry = {
-  id: string
-  user_id: string
-  entry_date: string
-  mood: number | null
-  motivation: number | null
-  stress: number | null
-  fatigue: number | null
-  energy: number | null
-  note: string | null
-  created_at: string
+export const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+  training:    { label: 'Entraînement',  icon: '💪', color: '#4f8ef7' },
+  match:       { label: 'Match',         icon: '🏅', color: '#22d3a0' },
+  tournament:  { label: 'Tournoi',       icon: '🏆', color: '#f59e0b' },
+  competition: { label: 'Compétition',   icon: '🎯', color: '#a855f7' },
+  objective:   { label: 'Objectif',      icon: '🎪', color: '#f43f5e' },
+  spectator:   { label: 'À suivre',      icon: '📺', color: '#38bdf8' },
 }
-
-export type HealthData = {
-  id: string
-  user_id: string
-  entry_date: string
-  weight: number | null
-  fat_pct: number | null
-  muscle_mass: number | null
-  sleep_hours: number | null
-  hydration_l: number | null
-  created_at: string
-}
-
-export type Injury = {
-  id: string
-  user_id: string
-  zone: string
-  level: number
-  detail: string | null
-  resolved: boolean
-  created_at: string
-}
-
-export type Profile = {
-  id: string
-  username: string | null
-  full_name: string | null
-  avatar_url: string | null
-  plan: 'free' | 'premium' | 'pro'
-  created_at: string
-}
-
-export const EVENT_TYPE_CONFIG: Record<EventType, { label: string; color: string; icon: string }> = {
-  training:    { label: 'Entraînement',          color: '#4f8ef7', icon: '💪' },
-  match:       { label: 'Match',                 color: '#22d3a0', icon: '🏅' },
-  tournament:  { label: 'Tournoi',               color: '#a855f7', icon: '🏆' },
-  competition: { label: 'Compétition',           color: '#f59e0b', icon: '🎯' },
-  objective:   { label: 'Objectif',              color: '#f43f5e', icon: '🎪' },
-  spectator:   { label: 'Événement à suivre',    color: '#38bdf8', icon: '📺' },
-}
-
-export const SPECTATOR_SPORTS = [
-  'Football','Rugby','Tennis','Basketball','Cyclisme',
-  'Formule 1','Athlétisme','Natation','Handball','Volleyball',
-  'MMA / UFC','Golf','Baseball','Hockey','Autre',
-]
