@@ -69,11 +69,13 @@ export type Exercise = {
   reps?: number
 }
 
+export type EventType = 'training' | 'match' | 'tournament' | 'competition' | 'objective' | 'spectator'
+
 export type CalendarEvent = {
   id: string
   user_id: string
   sport_id: string | null
-  type: 'training' | 'match' | 'tournament' | 'competition' | 'objective' | 'spectator'
+  type: EventType
   title: string
   event_date: string
   event_time: string | null
@@ -106,3 +108,8 @@ export const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: string; co
   objective:   { label: 'Objectif',      icon: '🎪', color: '#f43f5e' },
   spectator:   { label: 'À suivre',      icon: '📺', color: '#38bdf8' },
 }
+
+export const SPECTATOR_SPORTS = [
+  'Football', 'Basketball', 'Tennis', 'Rugby', 'Formule 1', 'Cyclisme',
+  'Athlétisme', 'Natation', 'Boxe', 'MMA', 'Golf', 'Handball', 'Volleyball', 'Autre',
+]
